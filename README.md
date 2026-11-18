@@ -138,7 +138,7 @@ SYNQT posts `{"idEntity":"order-1042-1"}` to your `callbackUrl` on every status 
 
 ### 8. Go live
 
-Switch to `Synqt.Environment.LIVE` and your live merchant credentials, test one real payment per method you offer, and work through "Security and compliance" and "Before merchants use this" below.
+Switch to `Synqt.Environment.LIVE` and your live merchant credentials, test one real payment per method you offer, and work through "Security and compliance" below.
 
 ## The payment sheet
 
@@ -152,7 +152,7 @@ Switch to `Synqt.Environment.LIVE` and your live merchant credentials, test one 
 
 Fields the app prefills (through `prefill`) are hidden when their value passes its checks, and a section goes when all of its fields are filled in; once the first and last name are filled in, the optional title, middle name and suffix go too. When every mandatory field of a method is filled in this way, the sheet skips the form and pays straight away, showing only the processing screen. If SYNQT refuses a value, the form appears with the error so the payer can correct it. Methods with only optional fields always show their form.
 
-When SYNQT accepts a payment the payer finishes in another app (Zapper, SnapScan, UPI and others), the sheet stays open and shows the next step: an "Open Zapper" button for this phone, the QR code for scanning from another phone, the amount (or the exact amount SYNQT requires), the reference, and a live "Time left to pay" countdown. For Pay offline the next step is "How to pay": the one-time reference in its own card at the top ("Your payment will fail without this reference."), then the bank account to transfer to (account holder, account number, bank and any account type SYNQT sends, then the branch, or the bank code when there is no branch) and the amount, with copy buttons on the values a payer types into their banking app (the amount is copied as a bare number), then a four-point "Before you pay" notice based on the Payment Web App's (`nextStep.payInto`). The notice covers exact amounts, one-time references, transfer fees and banking hours, and third-party payments; it is draft wording and needs sign-off from SYNQT's compliance owner before release. Done, or closing the sheet, returns the result. Apps with their own screens get the same details as `CreatePayinResult.Instructions.nextStep`.
+When SYNQT accepts a payment the payer finishes in another app (Zapper, SnapScan, UPI and others), the sheet stays open and shows the next step: an "Open Zapper" button for this phone, the QR code for scanning from another phone, the amount (or the exact amount SYNQT requires), the reference, and a live "Time left to pay" countdown. For Pay offline the next step is "How to pay": the one-time reference in its own card at the top ("Your payment will fail without this reference."), then the bank account to transfer to (account holder, account number, bank and any account type SYNQT sends, then the branch, or the bank code when there is no branch) and the amount, with copy buttons on the values a payer types into their banking app (the amount is copied as a bare number), then a four-point "Before you pay" notice based on the Payment Web App's (`nextStep.payInto`). The notice covers exact amounts, one-time references, transfer fees and banking hours, and third-party payments. Done, or closing the sheet, returns the result. Apps with their own screens get the same details as `CreatePayinResult.Instructions.nextStep`.
 
 If SYNQT refuses the payment, the reason appears in the sheet under the field it is about, so the payer can fix it and try again. The sheet follows the phone's light or dark setting, also when it changes while the sheet is open (it is rebuilt where the payer left it, unless a payment is being sent at that moment).
 
@@ -243,7 +243,7 @@ Because names and messages depend on the phone's language, `DirectPaymentMethod.
 
 ## Generated code and the SYNQT API version
 
-The payment method models (`PaymentMethods.kt`), the sheet's fields (`MethodFormData.kt`), all of the sheet's text (`synqt_form_strings.xml` and `synqt_strings.xml`), the colours (`synqt_colors.xml`, light and dark) and the shared field test cases (`FieldCasesTest.kt`) are generated from SYNQT's OpenAPI spec by a separate SYNQT app, not by anything in this repo, so change them there rather than here. CARD's raw card number fields are left out of this SDK, as they put the app in PCI DSS scope; only the card add-on has them.
+The payment method models (`PaymentMethods.kt`), the sheet's fields (`MethodFormData.kt`), all of the sheet's text (`synqt_form_strings.xml` and `synqt_strings.xml`), the colours (`synqt_colors.xml`, light and dark) and the shared field test cases (`FieldCasesTest.kt`) are generated from SYNQT's OpenAPI spec by a separate SYNQT app. CARD's raw card number fields are left out of this SDK, as they put the app in PCI DSS scope; only the card add-on has them.
 
 They are generated from SYNQT API 2.84 today, and the spec lives with the generator app. A new SYNQT API version replaces the generated files in one commit, and every SYNQT SDK moves to the same version together, so they all ask payers for the same things in the same words.
 
@@ -255,41 +255,6 @@ Where SYNQT's spec says a payer must give "at least one of" several details (Abs
 
 The demo app lives in the [synqt-examples](https://github.com/synqt-pay/synqt-examples) repo, under `android/`. This SDK is its `base` build variant. It installs the published SDK by default; with `-Psynqt.local=true` it builds this checkout instead, so clone that repo as `demos` next to this one to try changes before releasing them. Its README has the steps.
 
-## Release
-
-Releases are published to Maven Central (Central Portal) from a developer's Mac; there is no CI workflow.
-
-1. Set `version` in `synqt-sdk/build.gradle.kts` (and the card add-on's, which always has the same version), and move the version's `CHANGELOG.md` entry from "Unreleased" to the date.
-2. Run the checks: `./gradlew :synqt-sdk:testDebugUnitTest -q`, then the demo with `-Psynqt.local=true`.
-3. Provide the Central Portal token and SYNQT's release signing key as Gradle properties (in `~/.gradle/gradle.properties`, never in this repo) or environment variables: `mavenCentralUsername`, `mavenCentralPassword`, `signingInMemoryKey` (the ASCII-armoured private key), `signingInMemoryKeyId` and `signingInMemoryKeyPassword`, or the same names prefixed `ORG_GRADLE_PROJECT_` in the environment.
-4. Run `./gradlew :synqt-sdk:publishToMavenCentral`, then check the deployment and release it in the Central Portal (or run `./gradlew :synqt-sdk:publishAndReleaseToMavenCentral` to release it automatically). Maven Central won't replace a version that is already there, so every release needs a new one.
-5. Tag the repo `v<version>`, then publish the card add-on's same version (its own README).
-
-`./gradlew :synqt-sdk:publishToMavenLocal` builds the same AAR, sources and javadoc jars and POM into `~/.m2` to inspect before publishing. Without a signing key it publishes unsigned.
-
 ## Licence
 
 The SDK is licensed under the Apache License, Version 2.0: see `LICENSE` and `NOTICE`. The Instrument Sans font and the Phosphor icons it ships keep their own licences (SIL Open Font License and MIT), listed in `synqt-sdk/THIRD_PARTY_NOTICES.md`.
-
-## Before merchants use this
-
-Still open, for the people who own them:
-
-- payment method names not covered by the payment glossary, and the generated field labels and hints (including the new "OTT Voucher" and "Voucher PIN" drafts, the tile wording for Capitec Pay and PayShap, PayShap's "Which ID do you want to give?", the payer-facing failure messages in `synqt_strings.xml` (one per SYNQT failure reason code, new and in draft), and the provider dropdown's "Provider" label)
-- the provisional mobile type scale
-- the typeface: Instrument Sans (SIL Open Font License) replaces Inter in every SDK, chosen on 16 November 2026 and awaiting the Innovation Manager's sign-off
-- the light Orbit loader puts aqua `#27FFE2` on a light background, which the brand reserves for dark backgrounds (1.27:1 on white); it is decorative and sits beside "Processing your payment"
-
-Decided by the Innovation Manager on 26 October 2026:
-
-- The wordmark in `synqt_logo.xml`, from the synqt-brand-design skill, is the master artwork.
-- "Secure checkout" and the sheet's processing and error messages are approved for now.
-- "Amount due" stays an uppercase label in the eyebrow colour, not the mobile label style's text colour.
-
-Decided by the brand owner on 26 October 2026:
-
-- The dark theme error colour is `#FFB4AE`.
-- Field borders (`border-control`) are slate-muted `#7A8296` in both themes, which gives the field edge at least 3:1 contrast.
-- Field labels are 16sp Medium.
-- In dark mode, `action-tint` is magenta at 12%.
-- UI icons come from Phosphor Icons, Regular weight. The sheet's padlock, close, warning and dropdown chevron are Phosphor `lock`, `x`, `warning-circle` and `caret-down`. The MIT licence notice is in `synqt-sdk/THIRD_PARTY_NOTICES.md`, and apps that ship the SDK must include it.
