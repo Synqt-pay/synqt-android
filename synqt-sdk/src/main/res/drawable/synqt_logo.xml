@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Synqt wordmark, paths and offsets copied unchanged from the synqt-brand-design skill's synqt-logo-positive.svg.
+     Letters follow @color/synqt_logo_ink, so this is the positive logo on light and the negative logo on dark; the
+     dot stays magenta. Never redraw it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="78.5dp" android:height="26dp"
+    android:viewportWidth="154.854" android:viewportHeight="51.266">
+    <group android:translateY="10.8311">
+        <path android:fillColor="@color/synqt_logo_ink" android:pathData="M14.81 11.49 C10.65 10.99 8.19 10.76 8.19 8.58 C8.19 6.73 10.21 5.61 13.29 5.61 C16.38 5.61 18.68 7.01 18.90 9.31 L26.47 9.31 C26.08 3.42 20.75 0.00 13.01 0.00 C5.61 -0.06 0.62 3.70 0.62 9.42 C0.62 15.14 5.83 16.88 12.56 17.66 C17.22 18.28 19.18 18.45 19.18 20.81 C19.18 22.83 17.16 23.89 13.86 23.89 C9.99 23.89 7.80 22.15 7.52 19.63 L0.00 19.63 C0.34 25.80 5.78 29.56 13.80 29.56 C21.82 29.56 26.92 25.91 26.92 20.19 C26.92 13.68 21.43 12.17 14.81 11.49 Z" />
+    </group>
+    <group android:translateX="60.7460" android:translateY="10.8827">
+        <path android:fillColor="@color/synqt_logo_ink" android:pathData="M16.55 0.00 C12.12 0.00 9.48 1.68 7.63 3.93 L6.90 0.34 L0.00 0.34 L0.00 29.17 L7.91 29.17 L7.91 14.42 C7.91 9.43 10.26 6.51 14.36 6.51 C18.46 6.51 20.20 9.09 20.20 13.97 L20.20 29.17 L28.11 29.17 L28.11 13.18 C28.11 3.31 22.78 0.00 16.55 0.00 Z" />
+    </group>
+    <group android:translateX="92.6092" android:translateY="10.8827">
+        <path android:fillColor="@color/synqt_logo_ink" android:pathData="M23.05 0.34 L22.05 0.34 L22.05 3.93 C20.19 1.61 17.35 0.00 13.41 0.00 C5.67 -0.06 0.00 5.89 0.00 14.81 C0.00 23.73 5.66 29.50 13.35 29.50 C17.33 29.50 20.14 27.82 22.04 25.46 L22.04 34.46 L22.05 34.46 L22.05 35.99 C22.05 38.41 24.02 40.38 26.45 40.38 L29.95 40.38 L29.95 19.25 C29.95 16.83 27.99 14.86 25.56 14.86 L22.05 14.86 L22.05 16.33 C21.53 20.35 18.98 23.05 15.15 23.05 C10.83 23.05 8.08 19.62 8.08 14.69 C8.08 9.75 10.83 6.44 15.15 6.44 C18.83 6.44 21.32 8.89 21.98 12.67 L22.05 12.64 L22.05 12.69 L25.56 12.69 C27.96 12.69 29.90 10.77 29.95 8.39 L29.95 8.32 C29.95 8.32 29.95 8.31 29.95 8.30 L29.95 0.33 L23.05 0.33 L23.05 0.34 Z" />
+    </group>
+    <group android:translateX="126.7834">
+        <path android:fillColor="@color/synqt_logo_ink" android:pathData="M0.00 19.19 C0.00 21.61 1.97 23.58 4.40 23.58 L7.91 23.58 L7.91 21.66 L7.91 21.66 L7.91 17.89 L14.53 17.89 L14.53 11.22 L7.91 11.22 L7.91 0.00 L0.00 0.00 L0.00 17.90 L0.00 19.19 L0.00 19.19 Z" />
+    </group>
+    <group android:translateX="126.7928" android:translateY="25.7395">
+        <path android:fillColor="@color/synqt_logo_ink" android:pathData="M10.77 7.63 C8.69 7.63 7.91 6.79 7.91 4.77 L7.91 0.75 C7.91 0.75 7.91 0.75 7.90 0.75 L7.90 0.00 L4.39 0.00 C1.97 0.00 0.00 1.97 0.00 4.39 L0.00 4.51 L0.00 6.06 L0.00 6.81 L0.03 6.81 C0.27 11.80 3.01 14.30 8.25 14.30 L14.70 14.30 L14.70 7.62 L10.77 7.62 L10.77 7.63 Z" />
+    </group>
+    <group android:translateX="27.3574" android:translateY="11.2183">
+        <path android:fillColor="@color/synqt_logo_ink" android:pathData="M30.74 0.00 L22.27 0.00 L15.43 20.53 L8.41 0.00 L0.00 0.00 L11.09 28.96 L6.78 40.05 L11.37 40.05 C13.67 40.05 15.73 38.64 16.56 36.50 L18.65 31.11 L30.73 0.00 L30.74 0.00 Z" />
+    </group>
+    <group android:translateX="145.7092" android:translateY="31.0714">
+        <path android:fillColor="@color/synqt_magenta" android:pathData="M4.57 9.14 C7.10 9.14 9.14 7.10 9.14 4.57 C9.14 2.05 7.10 0.00 4.57 0.00 C2.05 0.00 0.00 2.05 0.00 4.57 C0.00 7.10 2.05 9.14 4.57 9.14 Z" />
+    </group>
+</vector>

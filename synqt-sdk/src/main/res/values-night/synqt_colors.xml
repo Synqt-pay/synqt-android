@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Synqt colour tokens, dark theme: only the tokens that change. Generated: don't edit by hand. -->
+<resources>
+    <color name="synqt_surface">#1A1C29</color>
+    <color name="synqt_surface_panel">#212536</color>
+    <color name="synqt_text">#FFFFFF</color>
+    <color name="synqt_text_muted">#A7AFC5</color>
+    <color name="synqt_action">#F318FF</color>
+    <color name="synqt_on_action">#1A1C29</color>
+    <!-- Dark: magenta at 12%. -->
+    <color name="synqt_action_tint">#1FF318FF</color>
+    <color name="synqt_eyebrow">#F470FF</color>
+    <color name="synqt_border">#2A2F42</color>
+    <!-- slate-muted: a 3:1 field edge in both themes (brand owner, 26 Oct 2026). -->
+    <color name="synqt_border_control">#7A8296</color>
+    <color name="synqt_focus_ring">#27FFE2</color>
+    <color name="synqt_logo_ink">#FFFFFF</color>
+    <color name="synqt_pressed_overlay">#33FFFFFF</color>
+    <!-- The icon, border and words of an error. Dark: danger-light (brand owner, 26 Oct 2026): #B4232C is 2.59:1 on the dark surface, this is 9.98:1. -->
+    <color name="synqt_danger">#FFB4AE</color>
+    <!-- Frames the error banner, with danger_line. -->
+    <color name="synqt_danger_tint">#212536</color>
+    <color name="synqt_danger_line">#FFB4AE</color>
+</resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Synqt colour tokens from the synqt-brand-design skill, light theme. Dark values are in values-night.
+     Prefixed so host app resources cannot override them. Generated: don't edit by hand. -->
+<resources>
+    <color name="synqt_magenta">#F318FF</color>
+    <!-- For the Orbit loader only. The brand keeps aqua for dark grounds; its use on light is an open point. -->
+    <color name="synqt_aqua">#27FFE2</color>
+    <color name="synqt_surface">#FFFFFF</color>
+    <color name="synqt_surface_panel">#F0F0F0</color>
+    <color name="synqt_text">#1A1C29</color>
+    <color name="synqt_text_muted">#4E5670</color>
+    <color name="synqt_on_accent">#1A1C29</color>
+    <color name="synqt_action">#B505BF</color>
+    <color name="synqt_on_action">#FFFFFF</color>
+    <!-- Dark: magenta at 12%. -->
+    <color name="synqt_action_tint">#FEEEFF</color>
+    <color name="synqt_eyebrow">#B505BF</color>
+    <color name="synqt_border">#E7EAF2</color>
+    <!-- slate-muted: a 3:1 field edge in both themes (brand owner, 26 Oct 2026). -->
+    <color name="synqt_border_control">#7A8296</color>
+    <color name="synqt_focus_ring">#1A1C29</color>
+    <color name="synqt_logo_ink">#1A1C29</color>
+    <color name="synqt_pressed_overlay">#331A1C29</color>
+    <!-- The icon, border and words of an error. Dark: danger-light (brand owner, 26 Oct 2026): #B4232C is 2.59:1 on the dark surface, this is 9.98:1. -->
+    <color name="synqt_danger">#B4232C</color>
+    <!-- Frames the error banner, with danger_line. -->
+    <color name="synqt_danger_tint">#FCEBEC</color>
+    <color name="synqt_danger_line">#F2D1D3</color>
+</resources>

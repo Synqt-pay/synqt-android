@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light status bar icons on the dark surface. -->
+    <style name="SynqtPaymentApp" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/synqt_surface</item>
+        <item name="android:statusBarColor">@color/synqt_surface</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

@@ -1,0 +1,25 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Payment apps the sheet checks for, so it can open the payment in the app itself (Android 11+ package visibility).
+         Keep in step with APP_PACKAGES in PaymentMethodSheet.kt. -->
+    <queries>
+        <package android:name="com.zapper.android" />
+        <package android:name="com.fireid.snapscan" />
+    </queries>
+
+    <application>
+        <!-- Handles rotation, size and appearance changes itself (rebuilding the sheet in place for the latter), so the payer's details and next step survive them. -->
+        <activity
+            android:name="com.synqt.sdk.internal.sheet.PaymentSheetActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density|locale|layoutDirection"
+            android:exported="false"
+            android:theme="@style/SynqtSheetHost" />
+        <!-- The Payment Web App in the app; keeps the page through rotation, appearance, font size and language changes like the sheet. -->
+        <activity
+            android:name="com.synqt.sdk.internal.webapp.PaymentAppActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density|locale|layoutDirection"
+            android:exported="false"
+            android:theme="@style/SynqtPaymentApp" />
+    </application>
+</manifest>

@@ -1,0 +1,9 @@
+# The root build's plugin version. synqt-sdk/build.gradle.kts keeps plain coordinates
+# so the module still drops into an app that has no catalog, or a different one.
+[versions]
+agp = "9.5.0"
+maven-publish = "0.37.0"
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }

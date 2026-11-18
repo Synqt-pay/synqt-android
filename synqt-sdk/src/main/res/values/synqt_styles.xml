@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Laid over the sheet's theme so system-drawn parts (text cursor, selection handles, progress) use the action colour. -->
+    <style name="SynqtSheetTint">
+        <item name="android:colorAccent">@color/synqt_action</item>
+        <item name="android:colorControlActivated">@color/synqt_action</item>
+        <item name="android:colorPrimary">@color/synqt_action</item>
+        <item name="android:textColorHighlight">@color/synqt_action_tint</item>
+    </style>
+
+    <!-- The sheet's own activity: invisible, so the app shows through and only the sheet's dialog draws. -->
+    <style name="SynqtSheetHost" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- The Payment Web App screen: opaque, on the sheet's surface colour, with dark status bar icons. -->
+    <style name="SynqtPaymentApp" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/synqt_surface</item>
+        <item name="android:statusBarColor">@color/synqt_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
