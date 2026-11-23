@@ -20,20 +20,25 @@ import android.text.Editable
 import android.text.InputFilter
 import android.text.InputType
 import android.text.TextWatcher
+import android.util.TypedValue
 import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.Window
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.AdapterView
+import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.synqt.sdk.CreatePayinResult
@@ -91,6 +96,9 @@ internal class SheetAddon(val secure: Boolean, val section: (Context, Any?) -> M
 /** What the payer does to a field: [edit] on every change, [leave] when focus moves away. */
 private class Events(val edit: () -> Unit, val leave: () -> Unit)
 
+/** A bank or provider field's "couldn't load" block: its banner, and Try again with the spinner shown while loading. */
+private class BanksFailed(val banner: TextView, val button: Button, val spinner: View)
+
 /**
  * Synqt-branded payment sheet: wordmark header, order summary, one payer-facing input per field of [form] under
  * section headings, and a Pay button pinned to the bottom. Pay checks the values, builds the typed method and hands
@@ -100,13 +108,16 @@ private class Events(val edit: () -> Unit, val leave: () -> Unit)
 internal class PaymentMethodSheet(
     private val host: Activity,
     private val form: MethodForm,
-    prefill: Map<String, String>,
-    operators: List<PaymentOperator>,
+    private val prefill: Map<String, String>,
+    /** Null when SYNQT's list of banks and providers could not be loaded. */
+    operators: List<PaymentOperator>?,
     private val summary: PaymentSummary,
     private val result: CompletableDeferred<CreatePayinResult?>,
     private val restore: SheetState? = null,
     onPresented: () -> Unit = {},
     private val onPaymentStarted: () -> Unit = {},
+    /** Loads the banks and providers again, with the same retries; null if they still could not be loaded. */
+    private val reloadOperators: suspend () -> List<PaymentOperator>? = { null },
     private val addon: SheetAddon? = null,
     private val submit: suspend (JSONObject) -> CreatePayinResult,
 ) {
@@ -114,9 +125,14 @@ internal class PaymentMethodSheet(
     private val activity = host.withSystemNightMode()
     private val methodName = activity.getString(form.name)
     private val dialog = Dialog(activity)
-    private val inputs: Map<String, Input> = form.fields.mapNotNull { field ->
-        activity.input(field, (restore?.values ?: prefill)[field.path], operators, Events({ onEdit(field.path) }, { onLeave(field.path) }))?.let { field.path to it }
-    }.toMap()
+    // Mandatory bank or provider fields shown as "couldn't load" with Try again, by path, until the list loads.
+    private val banksFailed = mutableMapOf<String, BanksFailed>()
+    private var loadingBanks = false
+    private val inputs: MutableMap<String, Input> = form.fields.mapNotNull { field ->
+        // An optional field stays as it is without a list: a bank is hidden, a provider takes a typed code.
+        val missing = operators == null && field.required && (field.kind == FieldKind.OPERATOR || field.kind == FieldKind.PROVIDER)
+        (if (missing) banksFailed(field) else activity.input(field, (restore?.values ?: prefill)[field.path], operators.orEmpty(), events(field.path)))?.let { field.path to it }
+    }.toMap(mutableMapOf())
     // An add-on method's own fields, which it draws, checks and builds itself.
     private val addonSection: MethodSection? = addon?.section?.invoke(activity, restore?.addon)
 
@@ -131,7 +147,9 @@ internal class PaymentMethodSheet(
     // Fields the app prefilled with a value that passes its checks: hidden, but still sent. Shown again if SYNQT refuses it.
     private val filledIn = mutableSetOf<String>()
     private val detailsHeading = SynqtUI.text(activity, activity.getString(R.string.synqt_sheet_your_details), 20f, weight = SynqtUI.Weight.SEMIBOLD)
-    private val intro = SynqtUI.text(activity, "", 16f, R.color.synqt_text_muted)
+    // The intro only says there is nothing to enter; with fields to fill, the heading leads straight into them.
+    private val nothingToEnter = inputs.isEmpty() && addonSection == null
+    private val intro = SynqtUI.text(activity, activity.getString(R.string.synqt_sheet_intro_nothing_to_enter), 16f, R.color.synqt_text_muted)
     private val headings = mutableListOf<Pair<Int, View>>() // section heading views, by section
     private val questions = mutableListOf<View>() // each tile question's view, in order
     private val scroll = ScrollView(activity)
@@ -152,8 +170,8 @@ internal class PaymentMethodSheet(
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(context.dp(16), context.dp(16), context.dp(16), context.dp(8))
-            addView(context.summaryCard(summary))
-            addView(detailsHeading.apply { setPadding(0, context.dp(24), 0, context.dp(8)) })
+            addView(context.summaryCard(summary, secure = true))
+            addView(detailsHeading.apply { setPadding(0, context.dp(24), 0, context.dp(if (nothingToEnter) 8 else 16)) })
             addView(intro.apply { setPadding(0, 0, 0, context.dp(16)) })
             var section: Int? = null
             form.fields.forEach { field ->
@@ -193,15 +211,10 @@ internal class PaymentMethodSheet(
             setPadding(context.dp(12), context.dp(8), context.dp(12), context.dp(16))
             addView(SynqtUI.button(context, context.getString(R.string.synqt_sheet_pay, summary.amount), SynqtUI.ButtonStyle.PRIMARY).apply {
                 fontFeatureSettings = "tnum"
+                capScale(16f)
                 (layoutParams as LinearLayout.LayoutParams).topMargin = 0
                 setOnClickListener { onPay() }
             })
-            addView(SynqtUI.text(context, context.getString(R.string.synqt_sheet_secure_checkout), 13f, R.color.synqt_text_muted).apply {
-                setCompoundDrawablesRelativeWithIntrinsicBounds(context.synqtIcon(R.drawable.synqt_ic_lock, R.color.synqt_text_muted, 16), null, null, null)
-                compoundDrawablePadding = context.dp(8)
-                gravity = Gravity.CENTER
-                setPadding(0, context.dp(8), 0, 0)
-            }, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { gravity = Gravity.CENTER_HORIZONTAL })
         }
         val bottom = bottomBar.paddingBottom
         bottomBar.setOnApplyWindowInsetsListener { view, insets ->
@@ -295,12 +308,80 @@ internal class PaymentMethodSheet(
         centered = config.smallestScreenWidthDp >= 600
         val radius = activity.dp(24).toFloat()
         (panel.background as GradientDrawable).cornerRadii = floatArrayOf(radius, radius, radius, radius) + if (centered) floatArrayOf(radius, radius, radius, radius) else FloatArray(4)
-        (panel.getChildAt(0) as CappedColumn).share = if (centered) 0.8f else 0.92f
         panel.layoutParams = (panel.layoutParams as FrameLayout.LayoutParams).apply {
             width = if (config.screenWidthDp > 640) activity.dp(640) else MATCH_PARENT
             gravity = if (centered) Gravity.CENTER else Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         }
         bottomBar.requestApplyInsets()
+    }
+
+    private fun events(path: String) = Events({ onEdit(path) }, { onLeave(path) })
+
+    /**
+     * In place of a mandatory bank or provider field whose list didn't load: its label, why, and Try again. Pay's
+     * required check still scrolls here, as this is the field's view.
+     */
+    private fun banksFailed(field: FormField): Input {
+        val context = activity
+        val banner = SynqtUI.errorBanner(context).apply {
+            text = context.getString(R.string.synqt_sheet_banks_failed)
+            visibility = View.VISIBLE
+            (layoutParams as LinearLayout.LayoutParams).bottomMargin = 0
+        }
+        val button = SynqtUI.button(context, context.getString(R.string.synqt_sheet_try_again), SynqtUI.ButtonStyle.OUTLINE).apply { setOnClickListener { retryBanks() } }
+        val spinner = ProgressBar(context).apply {
+            indeterminateTintList = ColorStateList.valueOf(context.getColor(R.color.synqt_text))
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO // the button keeps its name, and reads as disabled
+            visibility = View.GONE
+        }
+        banksFailed[field.path] = BanksFailed(banner, button, spinner)
+        val view = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { bottomMargin = context.dp(12) }
+            addView(SynqtUI.text(context, context.getString(field.label), 16f, weight = SynqtUI.Weight.MEDIUM).apply { setPadding(0, 0, 0, context.dp(8)) })
+            addView(banner)
+            // The pill's 4dp focus-ring gap overhangs, so the pill lines up with the banner, 8dp under it.
+            addView(FrameLayout(context).apply {
+                addView(button, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+                addView(spinner, FrameLayout.LayoutParams(context.dp(24), context.dp(24), Gravity.CENTER))
+            }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { setMargins(-context.dp(4), context.dp(4), -context.dp(4), 0) })
+        }
+        return Input(view, { "" }, {}, button) {}
+    }
+
+    /** Try again: loads the banks and providers once more; on success the real fields take the blocks' places. */
+    private fun retryBanks() {
+        if (loadingBanks) return
+        fun loading(on: Boolean) {
+            loadingBanks = on
+            banksFailed.values.forEach { block ->
+                block.button.isEnabled = !on
+                block.button.setTextColor(activity.getColor(if (on) android.R.color.transparent else R.color.synqt_text))
+                block.spinner.visibility = if (on) View.VISIBLE else View.GONE
+            }
+        }
+        loading(true)
+        scope.launch {
+            val loaded = reloadOperators()
+            loading(false)
+            if (loaded == null) {
+                // Set again so the banner, a live region, tells TalkBack it failed once more.
+                banksFailed.values.forEach { it.banner.text = activity.getString(R.string.synqt_sheet_banks_failed) }
+                return@launch
+            }
+            banksFailed.keys.forEach { path ->
+                val old = inputs.getValue(path)
+                val input = activity.input(form.fields.first { it.path == path }, prefill[path], loaded, events(path)) ?: return@forEach
+                val parent = old.view.parent as ViewGroup
+                parent.addView(input.view, parent.indexOfChild(old.view))
+                parent.removeView(old.view)
+                inputs[path] = input
+                invalid -= path
+                refused -= path
+            }
+            banksFailed.clear()
+            showFields()
+        }
     }
 
     /** Fields of tiles the payer did not pick read as blank, so they are neither checked nor sent. */
@@ -349,11 +430,10 @@ internal class PaymentMethodSheet(
         headings.forEach { (section, view) ->
             view.visibility = if (form.fields.any { it.section == section && it.path in inputs && visible(it.path) }) View.VISIBLE else View.GONE
         }
-        intro.text = activity.getString(if (inputs.isEmpty() && addonSection == null) R.string.synqt_sheet_intro_nothing_to_enter else R.string.synqt_sheet_intro, methodName)
         // Everything filled in by the app: the whole details section goes, leaving the summary and Pay.
         val allFilledIn = inputs.isNotEmpty() && inputs.keys.none(::visible)
         detailsHeading.visibility = if (allFilledIn) View.GONE else View.VISIBLE
-        intro.visibility = detailsHeading.visibility
+        intro.visibility = if (nothingToEnter) detailsHeading.visibility else View.GONE
     }
 
     private fun onEdit(path: String) {
@@ -465,12 +545,14 @@ internal class PaymentMethodSheet(
         if (app != null) {
             bottomBar.addView(SynqtUI.button(context, context.getString(R.string.synqt_next_open_app, methodName), SynqtUI.ButtonStyle.PRIMARY).apply {
                 (layoutParams as LinearLayout.LayoutParams).topMargin = 0
+                capScale(16f)
                 // Checked again on each tap, as the payer may install the app while the sheet is open.
                 setOnClickListener { val intent = inApp(); if (intent == null || runCatching { host.startActivity(intent) }.isFailure) open(app, problem) }
             })
         }
         bottomBar.addView(SynqtUI.button(context, context.getString(R.string.synqt_next_done), if (app != null) SynqtUI.ButtonStyle.OUTLINE else SynqtUI.ButtonStyle.PRIMARY).apply {
             if (app == null) (layoutParams as LinearLayout.LayoutParams).topMargin = 0
+            capScale(16f)
             setOnClickListener { dialog.dismiss() }
         })
         // Once only: coming back from the app shows this step, with the button to open it again.
@@ -525,7 +607,7 @@ internal class PaymentMethodSheet(
             .firstOrNull { it.resolveActivity(activity.packageManager) != null }
     }
 
-    private fun open(link: String, problem: android.widget.TextView) = try {
+    private fun open(link: String, problem: TextView) = try {
         host.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
     } catch (error: ActivityNotFoundException) {
         problem.text = activity.getString(R.string.synqt_next_no_app, methodName)
@@ -630,10 +712,12 @@ private fun Activity.withSystemNightMode(): Context {
     }
 }
 
-/** Caps its height at [share] of the window so the sheet never covers the whole screen; the weighted scroll area gives way first. */
+/**
+ * Caps its height at [share] of the window so the sheet never covers the whole screen; the weighted scroll area gives way
+ * first. The same on phones and tablets: a lower cap for the centred card left a landscape tablet about one field.
+ */
 private class CappedColumn(context: Context) : LinearLayout(context) {
-    var share = 0.92f
-        set(value) { field = value; requestLayout() }
+    private val share = 0.92f
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         // From the space the window is given now, so it follows rotation; resources can still hold the old size.
@@ -642,6 +726,26 @@ private class CappedColumn(context: Context) : LinearLayout(context) {
         super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(cap, MeasureSpec.AT_MOST))
     }
 }
+
+/**
+ * The Pay bar stays on screen, so its text stops growing at this font scale (about iOS's accessibility1) and the
+ * scrolling form between it and the header keeps the room. The header has no text, so it doesn't grow at all.
+ */
+private const val BAR_MAX_SCALE = 1.6f
+
+/** Caps this [sp]-sized text at [BAR_MAX_SCALE]; below it the text follows the payer's font size as usual. */
+private fun TextView.capScale(sp: Float) {
+    val max = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, sp * BAR_MAX_SCALE, resources.displayMetrics)
+    if (textSize > max) setTextSize(TypedValue.COMPLEX_UNIT_PX, max)
+}
+
+/** What autofill may offer from the payer's saved details for a field; email and phone get theirs from their kind. */
+private val AUTOFILL_HINTS = mapOf(
+    "customerName.titleBefore" to "personNamePrefix", "customerName.firstName" to "personGivenName",
+    "customerName.middleName" to "personMiddleName", "customerName.lastName" to "personFamilyName",
+    "customerName.titleAfter" to "personNameSuffix", "account.accountName" to View.AUTOFILL_HINT_NAME,
+    "paymentLocation.postalCode" to View.AUTOFILL_HINT_POSTAL_CODE, "paymentLocation.city" to "addressLocality",
+) // androidx.autofill's HintConstants values, without adding the library for eight strings
 
 internal fun Context.hairline() = View(this).apply {
     setBackgroundColor(getColor(R.color.synqt_border))
@@ -663,8 +767,8 @@ internal fun Context.sheetHeader(logo: Boolean = true, onClose: () -> Unit) = Li
     }, LinearLayout.LayoutParams(dp(48), dp(48)))
 }
 
-/** The checkout's order summary: amount due in large type, then who, how and which order. */
-private fun Context.summaryCard(summary: PaymentSummary, showReference: Boolean = true) = LinearLayout(this).apply {
+/** The checkout's order summary: amount due in large type, then who, how and which order; on the form, "Secure checkout" last. */
+private fun Context.summaryCard(summary: PaymentSummary, showReference: Boolean = true, secure: Boolean = false) = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
     background = shape(getColor(R.color.synqt_surface_panel), 12)
     setPadding(dp(16), dp(16), dp(16), dp(16))
@@ -677,6 +781,15 @@ private fun Context.summaryCard(summary: PaymentSummary, showReference: Boolean 
         getString(R.string.synqt_sheet_payment_method) to summary.method,
         if (showReference) getString(R.string.synqt_sheet_reference) to summary.reference else null,
     ).forEach { (label, value) -> addView(detailRow(label, value)) }
+    // One TextView with the lock as its drawable, so TalkBack reads it as a single element.
+    if (secure) addView(SynqtUI.text(context, getString(R.string.synqt_sheet_secure_checkout), 13f, R.color.synqt_text_muted).apply {
+        setCompoundDrawablesRelativeWithIntrinsicBounds(synqtIcon(R.drawable.synqt_ic_lock, R.color.synqt_text_muted, 16), null, null, null)
+        compoundDrawablePadding = dp(8)
+        gravity = Gravity.CENTER
+        setPadding(0, dp(12), 0, 0)
+        // Centred as a whole, so the lock stays next to the words.
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { gravity = Gravity.CENTER_HORIZONTAL }
+    })
 }
 
 /** The countdown card at the top of every next step; for OFFLINE it leads with the reference the payer must quote, as a missing one fails the payment. */
@@ -844,7 +957,7 @@ private fun Context.input(formField: FormField, prefill: String?, operators: Lis
     when (formField.kind) {
         FieldKind.EMAIL -> field.input.setAutofillHints(View.AUTOFILL_HINT_EMAIL_ADDRESS)
         FieldKind.PHONE -> field.input.setAutofillHints(View.AUTOFILL_HINT_PHONE)
-        else -> Unit
+        else -> AUTOFILL_HINTS[formField.path]?.let { field.input.setAutofillHints(it) }
     }
     field.input.setText(prefill.orEmpty())
     // Added after the prefill, so a pre-filled value does not count as the payer's edit.

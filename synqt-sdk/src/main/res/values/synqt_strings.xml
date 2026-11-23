@@ -5,7 +5,6 @@
 <resources>
     <!-- Form -->
     <string name="synqt_sheet_your_details">Your details</string>
-    <string name="synqt_sheet_intro">Enter your details to pay with %1$s.</string>
     <string name="synqt_sheet_intro_nothing_to_enter">No details needed. Tap Pay to continue.</string>
     <string name="synqt_sheet_pay">Pay %1$s</string>
     <string name="synqt_sheet_secure_checkout">Secure checkout</string>
@@ -13,6 +12,10 @@
     <string name="synqt_sheet_no_preference">No preference</string>
     <string name="synqt_sheet_hint_bank_code">The code from your bank or provider</string>
     <string name="synqt_sheet_hint_provider_code">The code from your provider</string>
+    <!-- Shown in place of a mandatory bank or provider field when SYNQT's list didn't load after two automatic retries. Draft, 23 Nov 2026, awaiting the Innovation Manager. -->
+    <string name="synqt_sheet_banks_failed">The list of banks could not be loaded. Check the connection and try again.</string>
+    <!-- The button that loads the list of banks again. -->
+    <string name="synqt_sheet_try_again">Try again</string>
     <string name="synqt_sheet_required">Required</string>
     <string name="synqt_sheet_check_field">Check this field</string>
     <!-- A field's label, then its error, in the banner when the field itself is not shown. -->

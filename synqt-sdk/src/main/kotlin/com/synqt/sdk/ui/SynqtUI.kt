@@ -14,6 +14,7 @@ import android.os.Build
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -151,7 +152,10 @@ public object SynqtUI {
 
     /** Label above, input, helper below. [setError] swaps the helper for an error. */
     public class Field internal constructor(public val view: LinearLayout, public val input: EditText, private val helper: TextView, private val helperText: String) {
+        private val error = input.readsError(helper)
+
         public fun setError(message: String?) {
+            error.show(message)
             val ctx = view.context
             helper.text = message ?: helperText
             helper.visibility = if (helper.text.isNullOrEmpty()) View.GONE else View.VISIBLE
@@ -175,7 +179,7 @@ public object SynqtUI {
             background = context.inputBackground(R.color.synqt_border_control)
             // Named by the label's labelFor: a contentDescription would make TalkBack read it instead of what was typed.
             hint = placeholder
-            setHintTextColor(context.getColor(R.color.synqt_text_muted))
+            setHintTextColor(context.getColor(R.color.synqt_placeholder))
         }
         val helperView = helperText(context, helper)
         val view = LinearLayout(context).apply {
@@ -190,7 +194,10 @@ public object SynqtUI {
 
     /** Labelled dropdown in the input's style. [setError] works as on [Field]. */
     public class Dropdown internal constructor(public val view: LinearLayout, public val spinner: Spinner, private val helper: TextView, private val helperText: String) {
+        private val error = spinner.readsError(helper)
+
         public fun setError(message: String?) {
+            error.show(message)
             val ctx = view.context
             helper.text = message ?: helperText
             helper.visibility = if (helper.text.isNullOrEmpty()) View.GONE else View.VISIBLE
@@ -279,3 +286,24 @@ public object SynqtUI {
         if (value.isEmpty()) visibility = View.GONE
     }
 }
+
+/**
+ * TalkBack reads a field's error on the field itself, as Android's own error state, so the payer hears it on landing
+ * there. While it shows the error, the line under the field is left out, so the message isn't read twice.
+ */
+private class FieldError(private val helper: TextView) : View.AccessibilityDelegate() {
+    private var message: String? = null
+
+    fun show(message: String?) {
+        this.message = message
+        helper.importantForAccessibility = if (message != null) View.IMPORTANT_FOR_ACCESSIBILITY_NO else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+    }
+
+    override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfo) {
+        super.onInitializeAccessibilityNodeInfo(host, info)
+        info.isContentInvalid = message != null
+        info.error = message
+    }
+}
+
+private fun View.readsError(helper: TextView) = FieldError(helper).also { accessibilityDelegate = it }

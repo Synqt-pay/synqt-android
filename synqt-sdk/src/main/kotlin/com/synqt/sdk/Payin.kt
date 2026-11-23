@@ -28,6 +28,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
@@ -101,22 +102,23 @@ public class Payin internal constructor(
     }
 
     /**
-     * The banks for [form]'s bank or provider field, and the order summary. Both lookups are niceties: without the
-     * bank list the sheet hides an optional bank field or asks for the code, and without the merchant name the summary
-     * leaves that row out.
+     * The banks for [form]'s bank or provider field (null if they could not be loaded), and the order summary. The
+     * merchant name is a nicety: without it the summary leaves that row out.
      */
-    internal suspend fun sheetContext(form: MethodForm, context: Context): Pair<List<PaymentOperator>, PaymentSummary> {
+    internal suspend fun sheetContext(form: MethodForm, context: Context): Pair<List<PaymentOperator>?, PaymentSummary> {
         val (operators, merchant) = coroutineScope {
             val operators = async {
-                if (form.fields.none { it.kind == FieldKind.OPERATOR || it.kind == FieldKind.PROVIDER }) emptyList() else orNull {
-                    availablePaymentOptions().firstOrNull { it.code == form.code }?.operators
-                }.orEmpty()
+                if (form.fields.none { it.kind == FieldKind.OPERATOR || it.kind == FieldKind.PROVIDER }) emptyList() else sheetOperators(form)
             }
             val merchant = async { orNull { JSONObject(synqt.call("GET", "/merchant-info", token)).optJSONObject("channelInfo")?.optString("name") } }
             operators.await() to merchant.await()?.ifEmpty { null }
         }
         return operators to PaymentSummary(money.toString(), merchant, context.getString(form.name), id)
     }
+
+    /** SYNQT's banks and providers for [form], empty if it lists none, or null if they could not be loaded (see [retrying]). */
+    internal suspend fun sheetOperators(form: MethodForm, retryAfterMs: Long = 2_000): List<PaymentOperator>? =
+        retrying(retryAfterMs) { availablePaymentOptions().firstOrNull { it.code == form.code }?.operators.orEmpty() }
 
     /**
      * Creates the payin with a payment method you built yourself. [customerIp] is checked against the merchant's
@@ -205,4 +207,24 @@ public class Payin internal constructor(
     } catch (error: JSONException) {
         null
     }
+}
+
+/**
+ * [load], tried twice more [delayMs] apart after a failed connection, an unreadable answer or a SYNQT server error;
+ * null if it still fails or SYNQT refuses it (4xx, not retried). Cancellation stops it.
+ */
+internal suspend fun <T> retrying(delayMs: Long = 2_000, load: suspend () -> T): T? {
+    repeat(3) { attempt ->
+        if (attempt > 0) delay(delayMs)
+        try {
+            return load()
+        } catch (refused: SynqtException) {
+            if (refused.httpCode < 500) return null
+        } catch (error: IOException) {
+            // tried again
+        } catch (error: JSONException) {
+            // tried again
+        }
+    }
+    return null
 }
