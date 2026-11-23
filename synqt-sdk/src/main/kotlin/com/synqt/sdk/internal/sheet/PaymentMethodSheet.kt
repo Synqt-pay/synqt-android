@@ -130,7 +130,7 @@ internal class PaymentMethodSheet(
     private val banner = SynqtUI.errorBanner(activity)
     // Fields the app prefilled with a value that passes its checks: hidden, but still sent. Shown again if SYNQT refuses it.
     private val filledIn = mutableSetOf<String>()
-    private val detailsHeading = SynqtUI.text(activity, activity.getString(R.string.synqt_sheet_your_details), 20f)
+    private val detailsHeading = SynqtUI.text(activity, activity.getString(R.string.synqt_sheet_your_details), 20f, weight = SynqtUI.Weight.SEMIBOLD)
     private val intro = SynqtUI.text(activity, "", 16f, R.color.synqt_text_muted)
     private val headings = mutableListOf<Pair<Int, View>>() // section heading views, by section
     private val questions = mutableListOf<View>() // each tile question's view, in order
@@ -448,7 +448,7 @@ internal class PaymentMethodSheet(
             // The countdown (with context transfer's reference) sits in one card above the instructions, the same for every method.
             if (reference != null || timer != null) addView(context.referenceCard(reference, timer).apply { (layoutParams as LinearLayout.LayoutParams).topMargin = context.dp(16) })
             val title = if (transfer != null) context.getString(R.string.synqt_next_transfer_title) else context.getString(R.string.synqt_next_title, methodName)
-            addView(SynqtUI.text(context, title, 20f).apply { setPadding(0, context.dp(24), 0, context.dp(8)) })
+            addView(SynqtUI.text(context, title, 20f, weight = SynqtUI.Weight.SEMIBOLD).apply { setPadding(0, context.dp(24), 0, context.dp(8)) })
             addView(SynqtUI.text(context, how, 16f, R.color.synqt_text_muted).apply { setPadding(0, 0, 0, context.dp(8)) })
             next.amountToPay?.let { addView(SynqtUI.text(context, context.getString(R.string.synqt_next_pay_exactly, it.toString()), 16f, weight = SynqtUI.Weight.MEDIUM).apply { fontFeatureSettings = "tnum"; setPadding(0, 0, 0, context.dp(8)) }) }
             if (transfer != null) {
@@ -798,7 +798,7 @@ private fun Context.processingView() = LinearLayout(this).apply {
     isClickable = true // keeps taps off the form underneath
     visibility = View.GONE
     addView(OrbitLoader(context), LinearLayout.LayoutParams(dp(72), dp(72)))
-    addView(SynqtUI.text(context, getString(R.string.synqt_sheet_processing), 20f).apply { gravity = Gravity.CENTER; setPadding(0, dp(24), 0, dp(8)) })
+    addView(SynqtUI.text(context, getString(R.string.synqt_sheet_processing), 20f, weight = SynqtUI.Weight.SEMIBOLD).apply { gravity = Gravity.CENTER; setPadding(0, dp(24), 0, dp(8)) })
     addView(SynqtUI.text(context, getString(R.string.synqt_sheet_processing_detail), 16f, R.color.synqt_text_muted).apply { gravity = Gravity.CENTER })
 }
 

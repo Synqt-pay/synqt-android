@@ -139,13 +139,13 @@ public object SynqtUI {
             context.synqtTypeface(weight)?.let { typeface = it }
         }
 
-    /** A panel with a title in the mobile subtitle style (20sp Regular). */
+    /** A panel with a title in the sheet's heading style (20sp SemiBold). */
     public fun card(context: Context, title: String, vararg children: View): LinearLayout = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         background = context.shape(context.getColor(R.color.synqt_surface), 12, 1, context.getColor(R.color.synqt_border))
         setPadding(context.dp(16), context.dp(16), context.dp(16), context.dp(16))
         layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { bottomMargin = context.dp(16) }
-        addView(text(context, title, 20f).apply { setPadding(0, 0, 0, context.dp(8)) })
+        addView(text(context, title, 20f, weight = Weight.SEMIBOLD).apply { setPadding(0, 0, 0, context.dp(8)) })
         children.forEach(::addView)
     }
 
