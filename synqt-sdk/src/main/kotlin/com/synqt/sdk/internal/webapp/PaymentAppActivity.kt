@@ -104,16 +104,19 @@ internal class PaymentAppActivity : Activity() {
 
     /** Bank and UPI links leave the WebView. The page controls an intent: link, so only what a browser would allow. */
     private fun openOutside(url: String) {
-        val target = if (url.startsWith("intent:")) {
-            Intent.parseUri(url, Intent.URI_INTENT_SCHEME).apply {
-                addCategory(Intent.CATEGORY_BROWSABLE)
-                component = null
-                selector = null
+        // A malformed intent: link (parseUri throws) or no app for it: the payer stays on the page, as on iOS.
+        runCatching {
+            val target = if (url.startsWith("intent:")) {
+                Intent.parseUri(url, Intent.URI_INTENT_SCHEME).apply {
+                    addCategory(Intent.CATEGORY_BROWSABLE)
+                    component = null
+                    selector = null
+                }
+            } else {
+                Intent(Intent.ACTION_VIEW, Uri.parse(url))
             }
-        } else {
-            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(target)
         }
-        runCatching { startActivity(target) } // no app for it: the payer stays on the page, as on iOS
     }
 }
 

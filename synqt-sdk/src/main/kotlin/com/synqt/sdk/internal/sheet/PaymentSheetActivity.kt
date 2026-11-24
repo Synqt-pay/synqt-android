@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 internal class PaymentSheetActivity : Activity() {
     private val scope = MainScope()
     private var request: SheetRequest? = null
-    private var setup: Pair<List<PaymentOperator>, PaymentSummary>? = null
+    private var setup: Pair<List<PaymentOperator>?, PaymentSummary>? = null
     private var sheet: PaymentMethodSheet? = null
     private lateinit var shown: Configuration
 
@@ -77,6 +77,8 @@ internal class PaymentSheetActivity : Activity() {
         return PaymentMethodSheet(
             this, sheetRequest.form, sheetRequest.prefill, operators, summary, sheetRequest.result, restore,
             onPresented = if (restore == null) sheetRequest.onPresented else ({}), onPaymentStarted = sheetRequest.onPaymentStarted,
+            // Try again: a list that loads is kept for a rebuilt sheet too.
+            reloadOperators = { sheetRequest.payin.sheetOperators(sheetRequest.form)?.also { loaded -> setup = setup?.copy(first = loaded) } },
             addon = sheetRequest.addon?.let { addon -> SheetAddon(addon.secure) { context, state -> addon.section(context, sheetRequest.payin, sheetRequest.prefill, state) } },
         ) { method -> sheetRequest.payin.create(method, sheetRequest.customerIp) }
     }

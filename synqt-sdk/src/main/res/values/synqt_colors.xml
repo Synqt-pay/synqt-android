@@ -9,6 +9,8 @@
     <color name="synqt_surface_panel">#F0F0F0</color>
     <color name="synqt_text">#1A1C29</color>
     <color name="synqt_text_muted">#4E5670</color>
+    <!-- Example text in an empty field, lighter than typed text so it can't pass for it: 4.73:1 on the light surface, 4.96:1 on the dark one. Proposed 23 Nov 2026, awaiting the Innovation Manager. -->
+    <color name="synqt_placeholder">#6B7389</color>
     <color name="synqt_on_accent">#1A1C29</color>
     <color name="synqt_action">#B505BF</color>
     <color name="synqt_on_action">#FFFFFF</color>
