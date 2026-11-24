@@ -5,7 +5,7 @@
     <color name="synqt_surface_panel">#212536</color>
     <color name="synqt_text">#FFFFFF</color>
     <color name="synqt_text_muted">#A7AFC5</color>
-    <!-- Example text in an empty field, lighter than typed text so it can't pass for it: 4.73:1 on the light surface, 4.96:1 on the dark one. Approved by the Innovation Manager, 24 Nov 2026. -->
+    <!-- Example text in an empty field, lighter than typed text so it can't pass for it: 4.73:1 on the light surface, 4.96:1 on the dark one. -->
     <color name="synqt_placeholder">#838B9F</color>
     <color name="synqt_action">#F318FF</color>
     <color name="synqt_on_action">#1A1C29</color>
