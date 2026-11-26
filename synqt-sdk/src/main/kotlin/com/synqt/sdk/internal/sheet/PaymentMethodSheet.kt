@@ -41,11 +41,13 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
-import com.synqt.sdk.CreatePayinResult
+import com.synqt.sdk.PayinAcceptedResponse
 import com.synqt.sdk.NextStep
-import com.synqt.sdk.PaymentMethod
-import com.synqt.sdk.PaymentMethodResponse
-import com.synqt.sdk.PaymentOperator
+import com.synqt.sdk.PaymentMethodPayin
+import com.synqt.sdk.PaymentMethodResponsePayin
+import com.synqt.sdk.PaymentOperatorIncoming
+import com.synqt.sdk.format
+import com.synqt.sdk.nextStep
 import com.synqt.sdk.R
 import com.synqt.sdk.SynqtException
 import com.synqt.sdk.addon.MethodSection
@@ -110,16 +112,16 @@ internal class PaymentMethodSheet(
     private val form: MethodForm,
     private val prefill: Map<String, String>,
     /** Null when SYNQT's list of banks and providers could not be loaded. */
-    operators: List<PaymentOperator>?,
+    operators: List<PaymentOperatorIncoming>?,
     private val summary: PaymentSummary,
-    private val result: CompletableDeferred<CreatePayinResult?>,
+    private val result: CompletableDeferred<PayinAcceptedResponse?>,
     private val restore: SheetState? = null,
     onPresented: () -> Unit = {},
     private val onPaymentStarted: () -> Unit = {},
     /** Loads the banks and providers again, with the same retries; null if they still could not be loaded. */
-    private val reloadOperators: suspend () -> List<PaymentOperator>? = { null },
+    private val reloadOperators: suspend () -> List<PaymentOperatorIncoming>? = { null },
     private val addon: SheetAddon? = null,
-    private val submit: suspend (JSONObject) -> CreatePayinResult,
+    private val submit: suspend (PaymentMethodPayin) -> PayinAcceptedResponse,
 ) {
     private val scope = MainScope()
     private val activity = host.withSystemNightMode()
@@ -159,7 +161,7 @@ internal class PaymentMethodSheet(
     private val panel = FrameLayout(activity)
     private var bottomBar: LinearLayout
     // The payin result once SYNQT accepted it, returned however the payer closes the sheet afterwards.
-    private var accepted: CreatePayinResult? = restore?.accepted
+    private var accepted: PayinAcceptedResponse? = restore?.accepted
     private var openedApp = restore?.openedApp ?: false
     // On a large screen the sheet is a card in the middle, as on iPad, not a sheet along the bottom.
     private var centered = false
@@ -273,7 +275,7 @@ internal class PaymentMethodSheet(
     /** [result] completes when the payer closes it: null if they never paid. */
     fun show() {
         dialog.show()
-        val next = (accepted as? CreatePayinResult.Instructions)?.nextStep
+        val next = accepted?.nextStep()
         when {
             next != null -> showNextStep(next) // rebuilt after SYNQT accepted the payment
             // Everything mandatory came from the app, so pay straight away; the processing view covers the form, and
@@ -463,7 +465,7 @@ internal class PaymentMethodSheet(
         val section = addonSection
         if (section != null && !section.check()) return
         val method = if (section != null) null else try {
-            form.build(FormValues(values)).toJson()
+            form.build(FormValues(values))
         } catch (error: FieldException) {
             return showErrors(listOf(PayinError(error.path, R.string.synqt_sheet_required)))
         }
@@ -471,14 +473,14 @@ internal class PaymentMethodSheet(
         scope.launch {
             try {
                 // An add-on builds its method only now, so it can do slow work such as encrypting card details.
-                val json = method ?: try {
-                    checkNotNull(section).paymentMethod()
+                val chosen = method ?: try {
+                    PaymentMethodPayin.Addon(form.code, checkNotNull(section).paymentMethod())
                 } catch (error: MethodSectionException) {
                     return@launch showMessage(error.payerMessage)
                 }
                 onPaymentStarted()
-                val created = submit(json)
-                val next = (created as? CreatePayinResult.Instructions)?.nextStep
+                val created = submit(chosen)
+                val next = created.nextStep()
                 if (next?.appLink != null || next?.qrCodeImageUrl != null || next?.payInto != null) {
                     accepted = created
                     showNextStep(next)
@@ -509,7 +511,7 @@ internal class PaymentMethodSheet(
         // With the method's own app installed, the payment opens straight in it; otherwise the link goes to the browser.
         val inApp = { listOfNotNull(app, next.qrCodeData).firstNotNullOfOrNull(::appIntent) }
         val transfer = next.payInto
-        val amount = next.amountToPay?.toString() ?: summary.amount
+        val amount = next.amountToPay?.format() ?: summary.amount
         val how = when {
             transfer != null -> context.getString(R.string.synqt_next_transfer)
             app != null && next.qrCodeImageUrl != null -> context.getString(R.string.synqt_next_open_or_scan, methodName)
@@ -530,7 +532,7 @@ internal class PaymentMethodSheet(
             val title = if (transfer != null) context.getString(R.string.synqt_next_transfer_title) else context.getString(R.string.synqt_next_title, methodName)
             addView(SynqtUI.text(context, title, 20f, weight = SynqtUI.Weight.SEMIBOLD).apply { setPadding(0, context.dp(24), 0, context.dp(8)) })
             addView(SynqtUI.text(context, how, 16f, R.color.synqt_text_muted).apply { setPadding(0, 0, 0, context.dp(8)) })
-            next.amountToPay?.let { addView(SynqtUI.text(context, context.getString(R.string.synqt_next_pay_exactly, it.toString()), 16f, weight = SynqtUI.Weight.MEDIUM).apply { fontFeatureSettings = "tnum"; setPadding(0, 0, 0, context.dp(8)) }) }
+            next.amountToPay?.let { addView(SynqtUI.text(context, context.getString(R.string.synqt_next_pay_exactly, it.format() ?: amount), 16f, weight = SynqtUI.Weight.MEDIUM).apply { fontFeatureSettings = "tnum"; setPadding(0, 0, 0, context.dp(8)) }) }
             if (transfer != null) {
                 // A banking app wants the number alone, not "R100.00".
                 val copyAmount = next.amountToPay?.amount?.toPlainString() ?: amount.filter { it.isDigit() || it == '.' }
@@ -817,7 +819,7 @@ private fun Context.referenceCard(reference: String?, timer: View?) = LinearLayo
 }
 
 /** The bank details an OFFLINE payer types into their own banking app, each with a copy button. */
-private fun Context.transferCard(account: PaymentMethodResponse.Account, amount: String, copyAmount: String) = LinearLayout(this).apply {
+private fun Context.transferCard(account: PaymentMethodResponsePayin.Account, amount: String, copyAmount: String) = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
     background = shape(getColor(R.color.synqt_surface_panel), 12)
     setPadding(dp(16), dp(8), dp(16), dp(16))
@@ -916,12 +918,12 @@ private fun Context.processingView() = LinearLayout(this).apply {
 }
 
 /** The input for one field, or null when there is nothing the payer could enter (an optional bank with no list). */
-private fun Context.input(formField: FormField, prefill: String?, operators: List<PaymentOperator>, events: Events): Input? {
+private fun Context.input(formField: FormField, prefill: String?, operators: List<PaymentOperatorIncoming>, events: Events): Input? {
     val choices = when (formField.kind) {
         FieldKind.CHOICE -> formField.options.map { (value, label) -> value to getString(label) }
-        FieldKind.OPERATOR -> operators.map { it.code to it.name }.ifEmpty { if (formField.required) null else return null }
+        FieldKind.OPERATOR -> operators.mapNotNull { op -> op.code?.let { it to (op.name ?: it) } }.ifEmpty { if (formField.required) null else return null }
         // Typed when SYNQT lists no providers.
-        FieldKind.PROVIDER -> providers(operators).map { it.code to it.name }.ifEmpty { null }
+        FieldKind.PROVIDER -> providers(operators).mapNotNull { provider -> provider.code?.let { it to (provider.name ?: it) } }.ifEmpty { null }
         else -> null
     }
     if (choices != null) {
@@ -1001,7 +1003,7 @@ internal class SheetState(
     val values: Map<String, String>,
     val chosen: List<Choice>,
     val filledIn: Set<String>,
-    val accepted: CreatePayinResult?,
+    val accepted: PayinAcceptedResponse?,
     val openedApp: Boolean,
     /** An add-on method's own state, from [com.synqt.sdk.addon.MethodSection.state]. */
     val addon: Any? = null,

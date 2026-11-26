@@ -12,8 +12,6 @@ import com.synqt.sdk.internal.form.problems
 import com.synqt.sdk.internal.form.providers
 import com.synqt.sdk.internal.form.readyToPay
 import com.synqt.sdk.internal.form.shows
-import com.synqt.sdk.internal.parseOperators
-import com.synqt.sdk.internal.parsePaymentOptions
 import com.synqt.sdk.internal.sheet.PayinError
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -44,8 +42,8 @@ class MethodFormsTest {
         val method = form("CAPITEC_PAY").build(FormValues(mapOf(
             "phoneNumber" to " 0821234567 ", "account.accountNumber" to "", "customerName.lastName" to "Doe",
         )))
-        assertEquals(PaymentMethod.CapitecPay(phoneNumber = "0821234567", customerName = PaymentMethod.PersonName(lastName = "Doe")), method)
-        assertNull((method as PaymentMethod.CapitecPay).account)
+        assertEquals(PaymentMethodPayin.CapitecPayMethod(phoneNumber = "0821234567", customerName = PaymentMethodPayin.PersonName(lastName = "Doe")), method)
+        assertNull((method as PaymentMethodPayin.CapitecPayMethod).account)
     }
 
     @Test
@@ -97,7 +95,7 @@ class MethodFormsTest {
         assertEquals(listOf("said" to "Required", lastName), absaPay.problems(mapOf("account.accountNumber" to "x"), listOf(id)).map { it.en() })
         assertTrue(absaPay.shows("emailAddress", listOf(id)))
         assertTrue(!absaPay.shows("account.accountNumber", listOf(id)))
-        val method = absaPay.build(FormValues(mapOf("said" to "0000000000000", "customerName.lastName" to "Doe"))) as PaymentMethod.AbsaPay
+        val method = absaPay.build(FormValues(mapOf("said" to "0000000000000", "customerName.lastName" to "Doe"))) as PaymentMethodPayin.AbsaPayMethod
         assertEquals("0000000000000", method.said)
         assertNull(method.account)
     }
@@ -209,17 +207,12 @@ class MethodFormsTest {
 
     @Test
     fun paymentOperatorsCarryTheirExternalProviders() {
-        val ops = parseOperators(JSONObject(
-            """{"data":[{"code":"ZA_BANK","name":"A Bank","externalProviders":{"providers":[{"code":"P1","name":"Provider one"},{"name":"no code"}]}},
-               {"code":"ZA_OTHER"},{"name":"no code"}]}""",
-        ).optJSONArray("data"))
-        assertEquals(
-            listOf(
-                PaymentOperator("ZA_BANK", "A Bank", listOf(ExternalProvider("P1", "Provider one"))),
-                PaymentOperator("ZA_OTHER", "ZA_OTHER"),
-            ),
-            ops,
-        )
+        val op = PaymentOperatorIncoming.fromJson(JSONObject(
+            """{"code":"ZA_BANK","name":"A Bank","externalProviders":{"providers":[{"code":"P1","name":"Provider one"},{"name":"no code"}]}}""",
+        ))
+        assertEquals(PaymentOperatorIncoming("ZA_BANK", "A Bank", ExternalProviders(listOf(ExternalProvider("P1", "Provider one"), ExternalProvider(name = "no code")))), op)
+        // The sheet skips providers without a code.
+        assertEquals(listOf(ExternalProvider("P1", "Provider one")), providers(listOf(op)))
     }
 
     @Test
@@ -229,9 +222,9 @@ class MethodFormsTest {
         val p2 = ExternalProvider("SHYFT", "Shyft")
         val p3 = ExternalProvider("CAPITEC", "CAPITEC")
         val banks = listOf(
-            PaymentOperator("ZA_STANDARD", "Standard Bank", listOf(p1, p2)),
-            PaymentOperator("ZA_CAPITEC", "Capitec", listOf(p3, p1)),
-            PaymentOperator("NG_BANK", "Another market", listOf(ExternalProvider("NG_P", "x"))),
+            PaymentOperatorIncoming("ZA_STANDARD", "Standard Bank", ExternalProviders(listOf(p1, p2))),
+            PaymentOperatorIncoming("ZA_CAPITEC", "Capitec", ExternalProviders(listOf(p3, p1))),
+            PaymentOperatorIncoming("NG_BANK", "Another market", ExternalProviders(listOf(ExternalProvider("NG_P", "x")))),
         )
         assertEquals(listOf(p1, p2, p3, ExternalProvider("NG_P", "x")), providers(banks))
         assertEquals(FieldKind.PROVIDER, form("PAYSHAP").fields.single { it.path == "externalProviderCode" }.kind)
@@ -250,12 +243,12 @@ class MethodFormsTest {
 
     @Test
     fun paymentOptionsCarryOperatorsAndPayerFacingNames() {
-        val options = parsePaymentOptions(JSONObject(
+        val options = AvailablePayinOptionList.fromJson(JSONObject(
             """{"data":[{"paymentMethodCode":"FPX","paymentOperators":[{"code":"MBB","name":"Maybank"},{"code":"X"}]},
                {"paymentMethodCode":"BRAND_NEW","segmentCode":"S1"}]}""",
-        ))
-        assertEquals(PaymentOption("FPX", listOf(PaymentOperator("MBB", "Maybank"), PaymentOperator("X", "X")), null), options[0])
-        assertEquals(PaymentOption("BRAND_NEW", emptyList(), "S1"), options[1])
+        )).data!!
+        assertEquals(AvailablePayinOption("FPX", listOf(PaymentOperatorIncoming("MBB", "Maybank"), PaymentOperatorIncoming("X")), null), options[0])
+        assertEquals(AvailablePayinOption("BRAND_NEW", null, "S1"), options[1])
         assertEquals("FPX online banking", en(methodName("FPX")!!))
         assertNull(methodName("BRAND_NEW")) // the sheet cannot show it, so it has no payer-facing name
     }

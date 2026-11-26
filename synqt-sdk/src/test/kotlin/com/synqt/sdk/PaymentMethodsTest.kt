@@ -1,7 +1,6 @@
 package com.synqt.sdk
 
 import com.synqt.sdk.internal.form.METHOD_FORMS
-import com.synqt.sdk.internal.parseCreatePayin
 import com.synqt.sdk.internal.requireSameMethod
 import com.synqt.sdk.internal.sheet.APP_PACKAGES
 import com.synqt.sdk.internal.sheet.appLinks
@@ -18,11 +17,13 @@ import org.junit.Test
 
 class PaymentMethodsTest {
 
+    private fun accepted(json: String) = PayinAcceptedResponse.fromJson(JSONObject(json))
+
     @Test
     fun requestWritesCodeAndOnlySetFields() {
-        val json = PaymentMethod.CapitecPay(
+        val json = PaymentMethodPayin.CapitecPayMethod(
             phoneNumber = "0821234567",
-            customerName = PaymentMethod.PersonName(lastName = "Doe", firstName = "Jane"),
+            customerName = PaymentMethodPayin.PersonName(lastName = "Doe", firstName = "Jane"),
         ).toJson()
         assertEquals("CAPITEC_PAY", json.getString("paymentMethodCode"))
         assertEquals("0821234567", json.getString("phoneNumber"))
@@ -33,40 +34,40 @@ class PaymentMethodsTest {
 
     @Test
     fun sharedAccountIsCheckedAgainstEachMethodsOwnFields() {
-        val missing = runCatching { PaymentMethod.Pse(account = PaymentMethod.Account(), emailAddress = "a@b.co", phoneNumber = "+27821234567") }
-        assertEquals("PaymentMethod.Pse needs account.accountName", missing.exceptionOrNull()?.message)
+        val missing = runCatching { PaymentMethodPayin.PseMethod(account = PaymentMethodPayin.Account(), emailAddress = "a@b.co", phoneNumber = "+27821234567") }
+        assertEquals("PaymentMethodPayin.PseMethod needs account.accountName", missing.exceptionOrNull()?.message)
         val extra = runCatching {
-            PaymentMethod.Pse(account = PaymentMethod.Account(accountName = "A Payer", accountNumber = "1"), emailAddress = "a@b.co", phoneNumber = "+27821234567")
+            PaymentMethodPayin.PseMethod(account = PaymentMethodPayin.Account(accountName = "A Payer", accountNumber = "1"), emailAddress = "a@b.co", phoneNumber = "+27821234567")
         }
-        assertEquals("PaymentMethod.Pse does not take account.accountNumber", extra.exceptionOrNull()?.message)
+        assertEquals("PaymentMethodPayin.PseMethod does not take account.accountNumber", extra.exceptionOrNull()?.message)
         // The same class serves a method that needs only the number.
-        val json = PaymentMethod.CapitecPay(phoneNumber = "0821234567", account = PaymentMethod.Account(accountNumber = "123")).toJson()
+        val json = PaymentMethodPayin.CapitecPayMethod(phoneNumber = "0821234567", account = PaymentMethodPayin.Account(accountNumber = "123")).toJson()
         assertEquals("123", json.getJSONObject("account").getString("accountNumber"))
         assertFalse(json.getJSONObject("account").has("accountName"))
     }
 
     @Test
     fun responseAccountsShareOneClass() {
-        val absa = PaymentMethodResponse.fromJson(JSONObject("""{"paymentMethodCode":"ABSA_PAY","accountCustomer":{"accountName":"A","accountNumber":"1"}}"""))
-        val pse = PaymentMethodResponse.fromJson(JSONObject("""{"paymentMethodCode":"PSE","accountCustomer":{"accountName":"B"}}"""))
-        assertEquals(PaymentMethodResponse.Account(accountName = "A", accountNumber = "1"), (absa as PaymentMethodResponse.AbsaPay).accountCustomer)
-        assertEquals(PaymentMethodResponse.Account(accountName = "B"), (pse as PaymentMethodResponse.Pse).accountCustomer)
+        val absa = PaymentMethodResponsePayin.fromJson(JSONObject("""{"paymentMethodCode":"ABSA_PAY","accountCustomer":{"accountName":"A","accountNumber":"1"}}"""))
+        val pse = PaymentMethodResponsePayin.fromJson(JSONObject("""{"paymentMethodCode":"PSE","accountCustomer":{"accountName":"B"}}"""))
+        assertEquals(PaymentMethodResponsePayin.Account(accountName = "A", accountNumber = "1"), (absa as PaymentMethodResponsePayin.AbsaPayMethodResponse).accountCustomer)
+        assertEquals(PaymentMethodResponsePayin.Account(accountName = "B"), (pse as PaymentMethodResponsePayin.PseMethodResponse).accountCustomer)
     }
 
     @Test
     fun cardRequestHasNoRawCardField() {
-        val json = PaymentMethod.Card(card = PaymentMethod.Card.CardData(cardDataVault = PaymentMethod.Card.CardDataVault(vaultToken = "vt_1"))).toJson()
+        val json = PaymentMethodPayin.CardMethod(card = PaymentMethodPayin.CardMethod.CardData(cardDataVault = PaymentMethodPayin.CardMethod.CardDataVault(vaultToken = "vt_1"))).toJson()
         assertEquals("vt_1", json.getJSONObject("card").getJSONObject("cardDataVault").getString("vaultToken"))
         assertFalse(json.getJSONObject("card").has("cardDataRaw"))
     }
 
     @Test
     fun parsesKnownResponse() {
-        val response = PaymentMethodResponse.fromJson(JSONObject(
+        val response = PaymentMethodResponsePayin.fromJson(JSONObject(
             """{"paymentMethodCode":"CAPITEC_PAY","idPayin":"o-1","reference":"REF1",
                "money":{"amount":100.50,"currencyCode":"ZAR"}}""",
         ))
-        response as PaymentMethodResponse.CapitecPay
+        response as PaymentMethodResponsePayin.CapitecPayMethodResponse
         assertEquals("REF1", response.reference)
         assertEquals(0, BigDecimal("100.5").compareTo(response.money!!.amount)) // scale differs between JSON parsers
         assertNull(response.phoneNumber)
@@ -85,31 +86,31 @@ class PaymentMethodsTest {
 
     @Test
     fun zapperInstructionsCarryTheNextStep() {
-        val result = parseCreatePayin(
+        val result = accepted(
             """{"paymentMethodResponse":{"paymentMethodCode":"ZAPPER_QR","qrCode":"https://example.com/qr.png",
                "qrRawData":"https://example.com/pay?qr=1","zapperQrDeepLink":"https://example.com/pay?qr=1","reference":"",
                "expireAt":"2026-10-27T15:15:49.725253752Z"}}""",
-        ) as CreatePayinResult.Instructions
-        assertTrue(result.paymentMethod is PaymentMethodResponse.ZapperQr)
+        ) as PayinAcceptedMethodResponse
+        assertTrue(result.paymentMethodResponse is PaymentMethodResponsePayin.ZapperQrMethodResponse)
         assertEquals(
             NextStep(appLink = "https://example.com/pay?qr=1", qrCodeImageUrl = "https://example.com/qr.png", qrCodeData = "https://example.com/pay?qr=1",
                 expiresAt = "2026-10-27T15:15:49.725253752Z"),
-            result.nextStep,
+            result.nextStep(),
         ) // the empty reference is left out
     }
 
     @Test
     fun offlineInstructionsCarryTheAccountToPayInto() {
-        val result = parseCreatePayin(
+        val result = accepted(
             """{"paymentMethodResponse":{"paymentMethodCode":"OFFLINE","reference":"REF123",
                "account":{"accountName":"Test Payee","accountNumber":"0000000000","bankName":"Test Bank","bankCode":"000000"},
                "accountCustomer":{"accountName":"Test Payer"}}}""",
-        ) as CreatePayinResult.Instructions
-        assertEquals(PaymentMethodResponse.Account(accountName = "Test Payee", accountNumber = "0000000000", bankName = "Test Bank", bankCode = "000000"), result.nextStep.payInto)
-        assertEquals("REF123", result.nextStep.reference)
+        ) as PayinAcceptedMethodResponse
+        assertEquals(PaymentMethodResponsePayin.Account(accountName = "Test Payee", accountNumber = "0000000000", bankName = "Test Bank", bankCode = "000000"), result.nextStep()?.payInto)
+        assertEquals("REF123", result.nextStep()?.reference)
         // Other methods' `account` is not shown as somewhere to pay.
-        val other = parseCreatePayin("""{"paymentMethodResponse":{"paymentMethodCode":"PAYSHAP","account":{"accountNumber":"0000000000"}}}""") as CreatePayinResult.Instructions
-        assertEquals(null, other.nextStep.payInto)
+        val other = accepted("""{"paymentMethodResponse":{"paymentMethodCode":"PAYSHAP","account":{"accountNumber":"0000000000"}}}""") as PayinAcceptedMethodResponse
+        assertEquals(null, other.nextStep()?.payInto)
     }
 
     @Test
@@ -136,24 +137,31 @@ class PaymentMethodsTest {
 
     @Test
     fun failureReasonsHaveAPayerMessage() {
-        // FailureReason.payerMessage(context) resolves these; codes without wording fall back to synqt_failure_general.
+        // FailureReasons.payerMessage(context) resolves these; codes without wording fall back to synqt_failure_general.
         assertTrue(en(payerMessageFor("PAYMENT_PROCESS_ERROR")!!).startsWith("Something went wrong while processing your payment."))
         assertNull(payerMessageFor("NEW_CODE"))
         assertEquals("Your payment could not be completed. Please try again, or choose another payment method.", en(R.string.synqt_failure_general))
     }
 
     @Test
+    fun aKnownMethodThatDoesNotParseBecomesUnknown() {
+        // CODE_PAYMENT's paymentLocationCustomer needs all three fields; a broken one must not fail the response.
+        val json = """{"paymentMethodCode":"CODE_PAYMENT","paymentLocationCustomer":{"city":"X"}}"""
+        assertTrue(PaymentMethodResponsePayin.fromJson(JSONObject(json)) is PaymentMethodResponsePayin.Unknown)
+    }
+
+    @Test
     fun unknownMethodDoesNotThrow() {
-        val response = PaymentMethodResponse.fromJson(JSONObject("""{"paymentMethodCode":"NEW_METHOD","x":1}"""))
-        assertTrue(response is PaymentMethodResponse.Unknown)
-        assertEquals("NEW_METHOD", (response as PaymentMethodResponse.Unknown).paymentMethodCode)
+        val response = PaymentMethodResponsePayin.fromJson(JSONObject("""{"paymentMethodCode":"NEW_METHOD","x":1}"""))
+        assertTrue(response is PaymentMethodResponsePayin.Unknown)
+        assertEquals("NEW_METHOD", (response as PaymentMethodResponsePayin.Unknown).paymentMethodCode)
     }
 
     @Test
     fun instructionsExposeTypedMethod() {
-        val result = parseCreatePayin("""{"paymentMethodResponse":{"paymentMethodCode":"PAYSHAP","reference":"R9"}}""")
-        val method = (result as CreatePayinResult.Instructions).paymentMethod
-        assertEquals("R9", (method as PaymentMethodResponse.PayShap).reference)
+        val result = accepted("""{"paymentMethodResponse":{"paymentMethodCode":"PAYSHAP","reference":"R9"}}""")
+        val method = (result as PayinAcceptedMethodResponse).paymentMethodResponse
+        assertEquals("R9", (method as PaymentMethodResponsePayin.PayShapMethodResponse).reference)
     }
 
     @Test

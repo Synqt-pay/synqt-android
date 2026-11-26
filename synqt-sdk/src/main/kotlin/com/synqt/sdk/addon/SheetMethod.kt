@@ -3,7 +3,7 @@ package com.synqt.sdk.addon
 import android.content.Context
 import android.view.View
 import androidx.annotation.StringRes
-import com.synqt.sdk.Payin
+import com.synqt.sdk.PayinCheckout
 import org.json.JSONObject
 
 /** For SYNQT's own add-ons, such as the card add-on. Apps never need it, and it may change in any release. */
@@ -31,10 +31,10 @@ public interface SheetMethod {
 
     /**
      * The method's fields, for one sheet. [context] is the sheet's themed context; [prefill] is the app's, as given to
-     * [Payin.presentPaymentSheet]. [restore] is what [MethodSection.state] returned when the sheet was rebuilt for a
+     * [PayinCheckout.presentPaymentSheet]. [restore] is what [MethodSection.state] returned when the sheet was rebuilt for a
      * light or dark, font size or language change, else null.
      */
-    public fun section(context: Context, payin: Payin, prefill: Map<String, String>, restore: Any?): MethodSection
+    public fun section(context: Context, checkout: PayinCheckout, prefill: Map<String, String>, restore: Any?): MethodSection
 }
 
 /** One sheet's fields for a [SheetMethod]. Main thread only. */

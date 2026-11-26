@@ -1,8 +1,8 @@
 package com.synqt.sdk.internal.form
 
 import com.synqt.sdk.ExternalProvider
-import com.synqt.sdk.PaymentMethod
-import com.synqt.sdk.PaymentOperator
+import com.synqt.sdk.PaymentMethodPayin
+import com.synqt.sdk.PaymentOperatorIncoming
 import com.synqt.sdk.R
 import com.synqt.sdk.internal.sheet.PayinError
 
@@ -14,8 +14,8 @@ import com.synqt.sdk.internal.sheet.PayinError
 internal enum class FieldKind { TEXT, EMAIL, PHONE, NUMBER, CHOICE, OPERATOR, PROVIDER }
 
 /** Every provider of [operators], once each, whichever bank the payer picks. */
-internal fun providers(operators: List<PaymentOperator>): List<ExternalProvider> =
-    operators.flatMap { it.externalProviders }.distinctBy { it.code }
+internal fun providers(operators: List<PaymentOperatorIncoming>): List<ExternalProvider> =
+    operators.flatMap { it.externalProviders?.providers.orEmpty() }.filter { it.code != null }.distinctBy { it.code }
 
 /**
  * One payer-facing input for a text field of a payment method, keyed by its JSON path (e.g. `customerName.lastName`).
@@ -46,8 +46,8 @@ internal class Choice(val label: Int, val paths: List<String>, val required: Lis
 /** The payer gives one of several details. The first choice is the default; the other choices' fields are hidden and not sent. */
 internal class OneOf(val question: Int, val choices: List<Choice>)
 
-/** A direct API method's inputs and how they become the typed [PaymentMethod]. Instances are generated into MethodFormData.kt. */
-internal class MethodForm(val code: String, val name: Int, val fields: List<FormField>, val oneOfs: List<OneOf> = emptyList(), val build: (FormValues) -> PaymentMethod)
+/** A direct API method's inputs and how they become the typed [PaymentMethodPayin]. Instances are generated into MethodFormData.kt. */
+internal class MethodForm(val code: String, val name: Int, val fields: List<FormField>, val oneOfs: List<OneOf> = emptyList(), val build: (FormValues) -> PaymentMethodPayin)
 
 /** The first choice of each question, which the sheet starts with. */
 internal val MethodForm.defaultChoices: List<Choice> get() = oneOfs.map { it.choices.first() }

@@ -9,10 +9,10 @@ import android.os.Handler
 import android.os.Looper
 import android.view.WindowManager
 import androidx.annotation.RequiresApi
-import com.synqt.sdk.CreatePayinResult
-import com.synqt.sdk.Payin
-import com.synqt.sdk.PaymentMethod
-import com.synqt.sdk.PaymentOperator
+import com.synqt.sdk.PayinAcceptedResponse
+import com.synqt.sdk.PayinCheckout
+import com.synqt.sdk.PaymentMethodPayin
+import com.synqt.sdk.PaymentOperatorIncoming
 import com.synqt.sdk.addon.SheetMethod
 import com.synqt.sdk.internal.form.MethodForm
 import kotlinx.coroutines.CompletableDeferred
@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 internal class PaymentSheetActivity : Activity() {
     private val scope = MainScope()
     private var request: SheetRequest? = null
-    private var setup: Pair<List<PaymentOperator>?, PaymentSummary>? = null
+    private var setup: Pair<List<PaymentOperatorIncoming>?, PaymentSummary>? = null
     private var sheet: PaymentMethodSheet? = null
     private lateinit var shown: Configuration
 
@@ -45,7 +45,7 @@ internal class PaymentSheetActivity : Activity() {
         shown = Configuration(resources.configuration)
         request.closer.attach { sheet?.close() ?: finish() } // the caller was cancelled
         scope.launch {
-            setup = request.payin.sheetContext(request.form, this@PaymentSheetActivity)
+            setup = request.checkout.sheetContext(request.form, this@PaymentSheetActivity)
             sheet = open(null).also { it.show() }
         }
     }
@@ -78,9 +78,9 @@ internal class PaymentSheetActivity : Activity() {
             this, sheetRequest.form, sheetRequest.prefill, operators, summary, sheetRequest.result, restore,
             onPresented = if (restore == null) sheetRequest.onPresented else ({}), onPaymentStarted = sheetRequest.onPaymentStarted,
             // Try again: a list that loads is kept for a rebuilt sheet too.
-            reloadOperators = { sheetRequest.payin.sheetOperators(sheetRequest.form)?.also { loaded -> setup = setup?.copy(first = loaded) } },
-            addon = sheetRequest.addon?.let { addon -> SheetAddon(addon.secure) { context, state -> addon.section(context, sheetRequest.payin, sheetRequest.prefill, state) } },
-        ) { method -> sheetRequest.payin.create(method, sheetRequest.customerIp) }
+            reloadOperators = { sheetRequest.checkout.sheetOperators(sheetRequest.form)?.also { loaded -> setup = setup?.copy(first = loaded) } },
+            addon = sheetRequest.addon?.let { addon -> SheetAddon(addon.secure) { context, state -> addon.section(context, sheetRequest.checkout, sheetRequest.prefill, state) } },
+        ) { method -> sheetRequest.checkout.createPayin(method, sheetRequest.customerIp) }
     }
 
     private companion object {
@@ -89,16 +89,16 @@ internal class PaymentSheetActivity : Activity() {
     }
 }
 
-/** What [Payin.presentPaymentSheet] hands the sheet. Kept in memory, as the token and callbacks can't go in an Intent. */
+/** What [PayinCheckout.presentPaymentSheet] hands the sheet. Kept in memory, as the token and callbacks can't go in an Intent. */
 internal class SheetRequest(
-    val payin: Payin,
+    val checkout: PayinCheckout,
     val form: MethodForm,
     val addon: SheetMethod?,
     val prefill: Map<String, String>,
     val customerIp: String?,
     val onPresented: () -> Unit,
     val onPaymentStarted: () -> Unit,
-    val result: CompletableDeferred<CreatePayinResult?>,
+    val result: CompletableDeferred<PayinAcceptedResponse?>,
 ) {
     val closer = Closer()
 }

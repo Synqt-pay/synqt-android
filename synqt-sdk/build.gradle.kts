@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.synqt"
-version = "0.1.0" // the card add-on publishes the same version and depends on this one
+version = "0.3.0" // the card add-on publishes the same version and depends on this one
 
 android {
     namespace = "com.synqt.sdk"

@@ -1,15 +1,18 @@
 package com.synqt.sdk
 
+import com.synqt.sdk.addon.SynqtAddonApi
+import com.synqt.sdk.internal.parseNextStep
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.math.BigDecimal
 
-/** The `paymentMethod` object of POST /payins/{idPayin}. Field rules differ per method and sometimes per currency. */
-public sealed interface PaymentMethod {
+/** The `paymentMethod` of a [Payin] request (POST /payins/{idPayin}). Field rules differ per method and sometimes per currency. */
+public sealed interface PaymentMethodPayin {
     public fun toJson(): JSONObject
 
     /** Absa Pay offers a simple, quick and secure way to make payments without needing to input banking login details. Customers can select their preferred account for payment and securely authorize the transaction through the banking app. */
-    public data class AbsaPay(
+    public data class AbsaPayMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
@@ -20,10 +23,10 @@ public sealed interface PaymentMethod {
         public val said: String? = null,
         /** Customer's first, middle and last name. */
         public val customerName: PersonName? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountType == null) { "PaymentMethod.AbsaPay does not take account.accountType" }
-            require(customerName == null || customerName.lastName != null) { "PaymentMethod.AbsaPay needs customerName.lastName" }
+            require(account?.accountType == null) { "PaymentMethodPayin.AbsaPayMethod does not take account.accountType" }
+            require(customerName == null || customerName.lastName != null) { "PaymentMethodPayin.AbsaPayMethod needs customerName.lastName" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -36,7 +39,7 @@ public sealed interface PaymentMethod {
     }
 
     /** Capitec Pay is an easy, fast and safe way to pay without having to enter the bank card details or share banking login information. The customer can choose the account he wants to pay from and authenticate the payment safely in the banking app. */
-    public data class CapitecPay(
+    public data class CapitecPayMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
@@ -49,10 +52,10 @@ public sealed interface PaymentMethod {
         public val customerName: PersonName? = null,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountType == null) { "PaymentMethod.CapitecPay does not take account.accountType" }
-            require(customerName == null || customerName.lastName != null) { "PaymentMethod.CapitecPay needs customerName.lastName" }
+            require(account?.accountType == null) { "PaymentMethodPayin.CapitecPayMethod does not take account.accountType" }
+            require(customerName == null || customerName.lastName != null) { "PaymentMethodPayin.CapitecPayMethod needs customerName.lastName" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -66,14 +69,14 @@ public sealed interface PaymentMethod {
     }
 
     /** Card payment method. */
-    public data class Card(
+    public data class CardMethod(
         public val card: CardData,
         public val paymentContacts: CardPaymentContacts? = null,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String? = null,
         public val saveCardForFutureUse: Boolean? = null,
         public val recurring: RecurringPayment? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         override fun toJson(): JSONObject = JSONObject()
             .put("paymentMethodCode", "CARD")
             .put("card", card.toJson())
@@ -119,7 +122,7 @@ public sealed interface PaymentMethod {
             public val addressLines: List<String>? = null,
         ) {
             init {
-                require(personName == null || personName.lastName != null) { "PaymentMethod.Card.CardPaymentContact needs personName.lastName" }
+                require(personName == null || personName.lastName != null) { "PaymentMethodPayin.CardMethod.CardPaymentContact needs personName.lastName" }
             }
 
             public fun toJson(): JSONObject = JSONObject()
@@ -173,7 +176,7 @@ public sealed interface PaymentMethod {
     }
 
     /** Convenience Store Payments. Payment method which requires customer to copy Payment Code from the Payment application right after the payment is submitted into kiosk in convenience store during the payment on the cashier. */
-    public data class CodePayment(
+    public data class CodePaymentMethod(
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
@@ -184,11 +187,11 @@ public sealed interface PaymentMethod {
         public val paymentLocation: PaymentLocation,
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account == null || account.accountName != null) { "PaymentMethod.CodePayment needs account.accountName" }
-            require(account?.accountNumber == null) { "PaymentMethod.CodePayment does not take account.accountNumber" }
-            require(account?.accountType == null) { "PaymentMethod.CodePayment does not take account.accountType" }
+            require(account == null || account.accountName != null) { "PaymentMethodPayin.CodePaymentMethod needs account.accountName" }
+            require(account?.accountNumber == null) { "PaymentMethodPayin.CodePaymentMethod does not take account.accountNumber" }
+            require(account?.accountType == null) { "PaymentMethodPayin.CodePaymentMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -201,12 +204,12 @@ public sealed interface PaymentMethod {
     }
 
     /** Crypto Offline is a payment method that allows customers to pay by crypto currency from they crypto wallet to an address that they are provided. */
-    public data class CryptoOffline(
+    public data class CryptoOfflineMethod(
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         override fun toJson(): JSONObject = JSONObject()
             .put("paymentMethodCode", "CRYPTO_OFFLINE")
             .put("paymentOperatorCode", paymentOperatorCode)
@@ -214,17 +217,17 @@ public sealed interface PaymentMethod {
     }
 
     /** Payment method which requires customer to scan QR code from the Payment application by Customer's Payment service application right after the payment is submitted. */
-    public data class DuitNow(
+    public data class DuitNowMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountName != null) { "PaymentMethod.DuitNow needs account.accountName" }
-            require(account.accountType == null) { "PaymentMethod.DuitNow does not take account.accountType" }
+            require(account.accountName != null) { "PaymentMethodPayin.DuitNowMethod needs account.accountName" }
+            require(account.accountType == null) { "PaymentMethodPayin.DuitNowMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -235,7 +238,7 @@ public sealed interface PaymentMethod {
     }
 
     /** E-Wallet is a payment option on Indonesian market that allows customers to use major Indonesian wallets for payments. Customer is either automatically redirected to a chosen wallet with all payment details pre-populated to finalize the payment or directly receives push notification to authorize the payment in case of OVO wallet. */
-    public data class EWallet(
+    public data class EWalletMethod(
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String,
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
@@ -244,10 +247,10 @@ public sealed interface PaymentMethod {
         public val emailAddress: String? = null,
         /** Your customer's mobile phone number in full international telephone number format, including country code. min 7, max 16, pattern `^\+?[0-9]+$`. */
         public val phoneNumber: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountNumber == null) { "PaymentMethod.EWallet does not take account.accountNumber" }
-            require(account?.accountType == null) { "PaymentMethod.EWallet does not take account.accountType" }
+            require(account?.accountNumber == null) { "PaymentMethodPayin.EWalletMethod does not take account.accountNumber" }
+            require(account?.accountType == null) { "PaymentMethodPayin.EWalletMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -259,7 +262,7 @@ public sealed interface PaymentMethod {
     }
 
     /** FNB Direct EFT is a digital payment method that enables customers to make secure payments directly through their FNB app. Rather than manually entering bank details, customers can approve the payment on their phone, creating a faster, safer, and more seamless checkout experience. */
-    public data class FnbDirectEFT(
+    public data class FnbDirectEFTMethod(
         /** Customer's first and last name. */
         public val customerName: PersonName,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
@@ -270,16 +273,16 @@ public sealed interface PaymentMethod {
         public val passportNumber: String? = null,
         /** min 13, max 13, pattern `^[0-9]*$`. */
         public val said: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(customerName.firstName != null) { "PaymentMethod.FnbDirectEFT needs customerName.firstName" }
-            require(customerName.lastName != null) { "PaymentMethod.FnbDirectEFT needs customerName.lastName" }
-            require(customerName.titleBefore == null) { "PaymentMethod.FnbDirectEFT does not take customerName.titleBefore" }
-            require(customerName.middleName == null) { "PaymentMethod.FnbDirectEFT does not take customerName.middleName" }
-            require(customerName.titleAfter == null) { "PaymentMethod.FnbDirectEFT does not take customerName.titleAfter" }
-            require(account.accountNumber != null) { "PaymentMethod.FnbDirectEFT needs account.accountNumber" }
-            require(account.accountName == null) { "PaymentMethod.FnbDirectEFT does not take account.accountName" }
-            require(account.accountType == null) { "PaymentMethod.FnbDirectEFT does not take account.accountType" }
+            require(customerName.firstName != null) { "PaymentMethodPayin.FnbDirectEFTMethod needs customerName.firstName" }
+            require(customerName.lastName != null) { "PaymentMethodPayin.FnbDirectEFTMethod needs customerName.lastName" }
+            require(customerName.titleBefore == null) { "PaymentMethodPayin.FnbDirectEFTMethod does not take customerName.titleBefore" }
+            require(customerName.middleName == null) { "PaymentMethodPayin.FnbDirectEFTMethod does not take customerName.middleName" }
+            require(customerName.titleAfter == null) { "PaymentMethodPayin.FnbDirectEFTMethod does not take customerName.titleAfter" }
+            require(account.accountNumber != null) { "PaymentMethodPayin.FnbDirectEFTMethod needs account.accountNumber" }
+            require(account.accountName == null) { "PaymentMethodPayin.FnbDirectEFTMethod does not take account.accountName" }
+            require(account.accountType == null) { "PaymentMethodPayin.FnbDirectEFTMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -292,18 +295,18 @@ public sealed interface PaymentMethod {
     }
 
     /** FPX (Financial Process Exchange) is a real-time online payment system in Malaysia that enables secure, instant payments by redirecting users to their selected FPX-participating banks. */
-    public data class Fpx(
+    public data class FpxMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountName != null) { "PaymentMethod.Fpx needs account.accountName" }
-            require(account.accountType != null) { "PaymentMethod.Fpx needs account.accountType" }
-            require(account.accountNumber == null) { "PaymentMethod.Fpx does not take account.accountNumber" }
+            require(account.accountName != null) { "PaymentMethodPayin.FpxMethod needs account.accountName" }
+            require(account.accountType != null) { "PaymentMethodPayin.FpxMethod needs account.accountType" }
+            require(account.accountNumber == null) { "PaymentMethodPayin.FpxMethod does not take account.accountNumber" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -314,15 +317,15 @@ public sealed interface PaymentMethod {
     }
 
     /** It is India market version of the Offline Bank Transfer which differs in the data which need to be collected and used during a Payment process. */
-    public data class IMPS(
+    public data class IMPSMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountName != null) { "PaymentMethod.IMPS needs account.accountName" }
-            require(account.accountType == null) { "PaymentMethod.IMPS does not take account.accountType" }
+            require(account.accountName != null) { "PaymentMethodPayin.IMPSMethod needs account.accountName" }
+            require(account.accountType == null) { "PaymentMethodPayin.IMPSMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -332,7 +335,7 @@ public sealed interface PaymentMethod {
     }
 
     /** Mobile Money is a payment method which allows customers to simply complete a payment from their mobile money wallet. */
-    public data class MobileMoney(
+    public data class MobileMoneyMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** Your customer's mobile phone number in full international telephone number format, including country code. min 7, max 16, pattern `^\+?[0-9]+$`. */
@@ -341,11 +344,11 @@ public sealed interface PaymentMethod {
         public val paymentOperatorCode: String? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountName != null) { "PaymentMethod.MobileMoney needs account.accountName" }
-            require(account.accountNumber == null) { "PaymentMethod.MobileMoney does not take account.accountNumber" }
-            require(account.accountType == null) { "PaymentMethod.MobileMoney does not take account.accountType" }
+            require(account.accountName != null) { "PaymentMethodPayin.MobileMoneyMethod needs account.accountName" }
+            require(account.accountNumber == null) { "PaymentMethodPayin.MobileMoneyMethod does not take account.accountNumber" }
+            require(account.accountType == null) { "PaymentMethodPayin.MobileMoneyMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -357,17 +360,17 @@ public sealed interface PaymentMethod {
     }
 
     /** MoMo is a mobile payment method that allows users to complete transactions via the MoMo app. Payments are initiated through QR codes, where users authorize the transaction within the app. */
-    public data class MomoPay(
+    public data class MomoPayMethod(
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         override fun toJson(): JSONObject = JSONObject()
             .put("paymentMethodCode", "MOMOPAY")
             .putOpt("emailAddress", emailAddress)
     }
 
     /** Nedbank Direct EFT is a digital payment method that allows customers to pay quickly and securely using their Nedbank app. Instead of entering bank details, customers simply approve the payment on their phone, making the checkout process faster, safer, and more convenient. */
-    public data class NedbankDirectEFT(
+    public data class NedbankDirectEFTMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** min 13, max 13, pattern `^[0-9]*$`. */
@@ -376,12 +379,12 @@ public sealed interface PaymentMethod {
         public val emailAddress: String? = null,
         /** Customer's first, middle and last name. */
         public val customerName: PersonName? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountName != null) { "PaymentMethod.NedbankDirectEFT needs account.accountName" }
-            require(account.accountNumber == null) { "PaymentMethod.NedbankDirectEFT does not take account.accountNumber" }
-            require(account.accountType == null) { "PaymentMethod.NedbankDirectEFT does not take account.accountType" }
-            require(customerName == null || customerName.lastName != null) { "PaymentMethod.NedbankDirectEFT needs customerName.lastName" }
+            require(account.accountName != null) { "PaymentMethodPayin.NedbankDirectEFTMethod needs account.accountName" }
+            require(account.accountNumber == null) { "PaymentMethodPayin.NedbankDirectEFTMethod does not take account.accountNumber" }
+            require(account.accountType == null) { "PaymentMethodPayin.NedbankDirectEFTMethod does not take account.accountType" }
+            require(customerName == null || customerName.lastName != null) { "PaymentMethodPayin.NedbankDirectEFTMethod needs customerName.lastName" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -393,7 +396,7 @@ public sealed interface PaymentMethod {
     }
 
     /** Netbanking, also known as online banking or Net Banking is a payment option offered by banks and financial institutions on Indian market that allow customers to use banking services over the internet. In our case, we take advantage of the Netbanking services to offer your customer UPI Payment method to pay funds directly from your customer Net Banking account. */
-    public data class NetBanking(
+    public data class NetBankingMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
@@ -402,9 +405,9 @@ public sealed interface PaymentMethod {
         public val phoneNumber: String? = null,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountType == null) { "PaymentMethod.NetBanking does not take account.accountType" }
+            require(account?.accountType == null) { "PaymentMethodPayin.NetBankingMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -416,7 +419,7 @@ public sealed interface PaymentMethod {
     }
 
     /** Offline Bank Transfer. Payment method which requires customer to copy Payment instruction from the Payment application right after the incoming payment is submitted and create the Payment transfer using the instructions within customer's own payment service such as Internet or mobile banking or wallet. */
-    public data class Offline(
+    public data class OfflineMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
@@ -431,11 +434,11 @@ public sealed interface PaymentMethod {
         public val taxId: String? = null,
         /** Customer's first, middle and last name. */
         public val customerName: PersonName? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountType == null) { "PaymentMethod.Offline does not take account.accountType" }
-            require(customerName == null || customerName.firstName != null) { "PaymentMethod.Offline needs customerName.firstName" }
-            require(customerName == null || customerName.lastName != null) { "PaymentMethod.Offline needs customerName.lastName" }
+            require(account?.accountType == null) { "PaymentMethodPayin.OfflineMethod does not take account.accountType" }
+            require(customerName == null || customerName.firstName != null) { "PaymentMethodPayin.OfflineMethod needs customerName.firstName" }
+            require(customerName == null || customerName.lastName != null) { "PaymentMethodPayin.OfflineMethod needs customerName.lastName" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -450,14 +453,14 @@ public sealed interface PaymentMethod {
     }
 
     /** Online Bank Transfer. Payment method where Customer is redirected to his own preferred Payment service application right after the payment is submitted and create the Payment transfer with pre-filled Payment instruction. */
-    public data class Online(
+    public data class OnlineMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         override fun toJson(): JSONObject = JSONObject()
             .put("paymentMethodCode", "ONLINE")
             .putOpt("account", account?.toJson())
@@ -466,7 +469,7 @@ public sealed interface PaymentMethod {
     }
 
     /** OTT Voucher is a cash-to-digital payment method that enables customers to make secure online payments using prepaid vouchers. Rather than relying on a credit card or bank account, customers simply enter a unique 12-digit PIN at checkout, creating an accessible, safe, and seamless payment experience. */
-    public data class OttVoucher(
+    public data class OttVoucherMethod(
         /** OTT voucher PIN. min 1. */
         public val voucherPin: String,
         /** Your customer's mobile phone number in full international telephone number format, including country code. min 7, max 16, pattern `^\+?[0-9]+$`. */
@@ -475,10 +478,10 @@ public sealed interface PaymentMethod {
         public val emailAddress: String,
         /** Person's first, middle and last name. */
         public val customerName: PersonName,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(customerName.firstName != null) { "PaymentMethod.OttVoucher needs customerName.firstName" }
-            require(customerName.lastName != null) { "PaymentMethod.OttVoucher needs customerName.lastName" }
+            require(customerName.firstName != null) { "PaymentMethodPayin.OttVoucherMethod needs customerName.firstName" }
+            require(customerName.lastName != null) { "PaymentMethodPayin.OttVoucherMethod needs customerName.lastName" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -490,16 +493,16 @@ public sealed interface PaymentMethod {
     }
 
     /** Phone to Account. Payment method which requires customer to scan QR code from the Payment application by Customer's Payment service application right after the payment is submitted. */
-    public data class P2AV2(
+    public data class P2AV2Method(
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String,
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountType == null) { "PaymentMethod.P2AV2 does not take account.accountType" }
+            require(account?.accountType == null) { "PaymentMethodPayin.P2AV2Method does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -510,7 +513,7 @@ public sealed interface PaymentMethod {
     }
 
     /** PayShap offers a quick, easy, and secure way to send money without having to input banking login details. Customers can make payments using just a phone number or account number, with transactions processed instantly. */
-    public data class PayShap(
+    public data class PayShapMethod(
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String,
         /** Your customer's mobile phone number, starting with 0. min 12, max 12. */
@@ -527,10 +530,10 @@ public sealed interface PaymentMethod {
         public val account: Account? = null,
         /** min 1. */
         public val externalProviderCode: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountType == null) { "PaymentMethod.PayShap does not take account.accountType" }
-            require(customerName == null || customerName.lastName != null) { "PaymentMethod.PayShap needs customerName.lastName" }
+            require(account?.accountType == null) { "PaymentMethodPayin.PayShapMethod does not take account.accountType" }
+            require(customerName == null || customerName.lastName != null) { "PaymentMethodPayin.PayShapMethod needs customerName.lastName" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -546,17 +549,17 @@ public sealed interface PaymentMethod {
     }
 
     /** Pay Me is payment method intended for South Africa market which allows customers to send payments by scanning QR codes from supported banks and e-wallets. */
-    public data class PayMe(
+    public data class PayMeMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
         /** Your customer's mobile phone number in full international telephone number format, including country code. min 7, max 16, pattern `^\+?[0-9]+$`. */
         public val phoneNumber: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountName != null) { "PaymentMethod.PayMe needs account.accountName" }
-            require(account.accountType == null) { "PaymentMethod.PayMe does not take account.accountType" }
+            require(account.accountName != null) { "PaymentMethodPayin.PayMeMethod needs account.accountName" }
+            require(account.accountType == null) { "PaymentMethodPayin.PayMeMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -567,16 +570,16 @@ public sealed interface PaymentMethod {
     }
 
     /** Pix is a Brazilian payment method which allows customers to send payments using their preferred banking app by either scanning QR code or copy-pasting Pix EMV code. */
-    public data class PixQR(
+    public data class PixQRMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** Brazilian tax payer identification number - CPF for individuals / CNPJ for businesses. min 14, max 14. */
         public val taxId: String,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountName != null) { "PaymentMethod.PixQR needs account.accountName" }
-            require(account.accountNumber == null) { "PaymentMethod.PixQR does not take account.accountNumber" }
-            require(account.accountType == null) { "PaymentMethod.PixQR does not take account.accountType" }
+            require(account.accountName != null) { "PaymentMethodPayin.PixQRMethod needs account.accountName" }
+            require(account.accountNumber == null) { "PaymentMethodPayin.PixQRMethod does not take account.accountNumber" }
+            require(account.accountType == null) { "PaymentMethodPayin.PixQRMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -586,17 +589,17 @@ public sealed interface PaymentMethod {
     }
 
     /** Payment method which requires customer to scan QR code from the Payment application by Customer's Payment service application right after the payment is submitted. */
-    public data class PromptPay(
+    public data class PromptPayMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account == null || account.accountNumber != null) { "PaymentMethod.PromptPay needs account.accountNumber" }
-            require(account?.accountType == null) { "PaymentMethod.PromptPay does not take account.accountType" }
+            require(account == null || account.accountNumber != null) { "PaymentMethodPayin.PromptPayMethod needs account.accountNumber" }
+            require(account?.accountType == null) { "PaymentMethodPayin.PromptPayMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -607,18 +610,18 @@ public sealed interface PaymentMethod {
     }
 
     /** PSE (Pagos Seguros en L?nea) is a real-time online payment system in Colombia that enables secure, instant bank transfer payments - customers simply log in into their internet banking and authorize pre-populated payment details. */
-    public data class Pse(
+    public data class PseMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String,
         /** Your customer's mobile phone number in full international telephone number format, including country code. min 7, max 16, pattern `^\+?[0-9]+$`. */
         public val phoneNumber: String,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountName != null) { "PaymentMethod.Pse needs account.accountName" }
-            require(account.accountNumber == null) { "PaymentMethod.Pse does not take account.accountNumber" }
-            require(account.accountType == null) { "PaymentMethod.Pse does not take account.accountType" }
+            require(account.accountName != null) { "PaymentMethodPayin.PseMethod needs account.accountName" }
+            require(account.accountNumber == null) { "PaymentMethodPayin.PseMethod does not take account.accountNumber" }
+            require(account.accountType == null) { "PaymentMethodPayin.PseMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -629,14 +632,14 @@ public sealed interface PaymentMethod {
     }
 
     /** QRIS is payment method intended for the Indonesian market which allows users to pay using scanning QR codes by theirs Payment application. */
-    public data class QrisPay(
+    public data class QrisPayMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountType == null) { "PaymentMethod.QrisPay does not take account.accountType" }
+            require(account?.accountType == null) { "PaymentMethodPayin.QrisPayMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -646,7 +649,7 @@ public sealed interface PaymentMethod {
     }
 
     /** QR Ph is payment method intended for Philippine market which allows customers to send payments by scanning QR codes from supported banks and e-wallets. */
-    public data class QrPh(
+    public data class QrPhMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
@@ -655,9 +658,9 @@ public sealed interface PaymentMethod {
         public val paymentOperatorCode: String? = null,
         /** Your customer's mobile phone number in full international telephone number format, including country code. min 7, max 16, pattern `^\+?[0-9]+$`. */
         public val phoneNumber: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountType == null) { "PaymentMethod.QrPh does not take account.accountType" }
+            require(account?.accountType == null) { "PaymentMethodPayin.QrPhMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -669,15 +672,15 @@ public sealed interface PaymentMethod {
     }
 
     /** SnapScan is a QR-based payment method that allows customers to make fast and secure payments by scanning a QR code using the SnapScan app or by clicking on the payment deep link. */
-    public data class SnapScanQr(
+    public data class SnapScanQrMethod(
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String,
         /** Person's first, middle and last name. */
         public val customerName: PersonName,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(customerName.firstName != null) { "PaymentMethod.SnapScanQr needs customerName.firstName" }
-            require(customerName.lastName != null) { "PaymentMethod.SnapScanQr needs customerName.lastName" }
+            require(customerName.firstName != null) { "PaymentMethodPayin.SnapScanQrMethod needs customerName.firstName" }
+            require(customerName.lastName != null) { "PaymentMethodPayin.SnapScanQrMethod needs customerName.lastName" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -687,7 +690,7 @@ public sealed interface PaymentMethod {
     }
 
     /** UPI Collect is a method of fund transfers in India. This payment method allows users to simply authorize payments through their registered UPI app after receiving a payment collection request. */
-    public data class UpiCollect(
+    public data class UpiCollectMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** Virtual payment address of the customer on UPI provided by the merchant or obtained during the processing on our platform. max 100, pattern `[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\.]+`. */
@@ -696,11 +699,11 @@ public sealed interface PaymentMethod {
         public val emailAddress: String,
         /** Your customer's mobile phone number in full international telephone number format, including country code. min 7, max 16, pattern `^\+?[0-9]+$`. */
         public val phoneNumber: String,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountName != null) { "PaymentMethod.UpiCollect needs account.accountName" }
-            require(account.accountNumber == null) { "PaymentMethod.UpiCollect does not take account.accountNumber" }
-            require(account.accountType == null) { "PaymentMethod.UpiCollect does not take account.accountType" }
+            require(account.accountName != null) { "PaymentMethodPayin.UpiCollectMethod needs account.accountName" }
+            require(account.accountNumber == null) { "PaymentMethodPayin.UpiCollectMethod does not take account.accountNumber" }
+            require(account.accountType == null) { "PaymentMethodPayin.UpiCollectMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -712,12 +715,12 @@ public sealed interface PaymentMethod {
     }
 
     /** UPI (Unified Payments Interface) is a method of fund transfers in India. The mechanism allows two parties to exchange funds using a UPI ID without having to share the banking information with the other party. */
-    public data class UpiId(
+    public data class UpiIdMethod(
         /** Virtual payment address of the customer on UPI provided by the merchant or obtained during the processing on our platform. max 100, pattern `[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\.]+`. */
         public val upiId: String,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         override fun toJson(): JSONObject = JSONObject()
             .put("paymentMethodCode", "UPIID")
             .put("upiId", upiId)
@@ -725,7 +728,7 @@ public sealed interface PaymentMethod {
     }
 
     /** UPI QR is payment method intended for the Indian market. This payment method requires customers to scan QR code by Customer's Payment service application compatible with UPI payment schema. */
-    public data class UpiQR(
+    public data class UpiQRMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** Virtual payment address of the customer on UPI provided by the merchant or obtained during the processing on our platform. max 100, pattern `[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\.]+`. */
@@ -736,10 +739,10 @@ public sealed interface PaymentMethod {
         public val phoneNumber: String? = null,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountNumber == null) { "PaymentMethod.UpiQR does not take account.accountNumber" }
-            require(account?.accountType == null) { "PaymentMethod.UpiQR does not take account.accountType" }
+            require(account?.accountNumber == null) { "PaymentMethodPayin.UpiQRMethod does not take account.accountNumber" }
+            require(account?.accountType == null) { "PaymentMethodPayin.UpiQRMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -752,7 +755,7 @@ public sealed interface PaymentMethod {
     }
 
     /** Virtual Accounts. Payment method which requires customer to copy Payment instruction with generated Virtual Account from the Payment application right after the payment is submitted and create the Payment transfer using the instructions within customer's own payment service such as Internet or mobile banking, wallet or ATM. */
-    public data class VaPay(
+    public data class VaPayMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account? = null,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
@@ -763,9 +766,9 @@ public sealed interface PaymentMethod {
         public val phoneNumber: String? = null,
         /** Specifies location where a customer is making the payment (e.g. */
         public val paymentLocation: PaymentLocation? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account?.accountType == null) { "PaymentMethod.VaPay does not take account.accountType" }
+            require(account?.accountType == null) { "PaymentMethodPayin.VaPayMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -778,17 +781,17 @@ public sealed interface PaymentMethod {
     }
 
     /** Virtual Accounts With Verified Bank Account. Payment method which requires customer to copy Payment instruction with assigned Virtual Account from the Payment application right after the payment is submitted and create the Payment transfer using the instructions within customer's own payment service such as Internet or mobile banking, wallet or ATM. */
-    public data class VaPayVerif(
+    public data class VaPayVerifMethod(
         /** Parameters of your customer's bank or wallet account which your customer sends funds from. */
         public val account: Account,
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(account.accountNumber != null) { "PaymentMethod.VaPayVerif needs account.accountNumber" }
-            require(account.accountType == null) { "PaymentMethod.VaPayVerif does not take account.accountType" }
+            require(account.accountNumber != null) { "PaymentMethodPayin.VaPayVerifMethod needs account.accountNumber" }
+            require(account.accountType == null) { "PaymentMethodPayin.VaPayVerifMethod does not take account.accountType" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
@@ -799,12 +802,12 @@ public sealed interface PaymentMethod {
     }
 
     /** Viet QR is a payment method intended for the Vietnamese market which allows users to pay using scanning QR codes by theirs payment application or internet banking. */
-    public data class VietQR(
+    public data class VietQRMethod(
         /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. */
         public val paymentOperatorCode: String,
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         override fun toJson(): JSONObject = JSONObject()
             .put("paymentMethodCode", "VIETQR")
             .put("paymentOperatorCode", paymentOperatorCode)
@@ -812,24 +815,30 @@ public sealed interface PaymentMethod {
     }
 
     /** Zapper is a QR-based payment method that allows customers to make fast and secure payments by scanning a QR code using the Zapper app or by clicking on the payment deep link. */
-    public data class ZapperQr(
+    public data class ZapperQrMethod(
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String,
         /** Customer's first and last name. */
         public val customerName: PersonName,
-    ) : PaymentMethod {
+    ) : PaymentMethodPayin {
         init {
-            require(customerName.firstName != null) { "PaymentMethod.ZapperQr needs customerName.firstName" }
-            require(customerName.lastName != null) { "PaymentMethod.ZapperQr needs customerName.lastName" }
-            require(customerName.titleBefore == null) { "PaymentMethod.ZapperQr does not take customerName.titleBefore" }
-            require(customerName.middleName == null) { "PaymentMethod.ZapperQr does not take customerName.middleName" }
-            require(customerName.titleAfter == null) { "PaymentMethod.ZapperQr does not take customerName.titleAfter" }
+            require(customerName.firstName != null) { "PaymentMethodPayin.ZapperQrMethod needs customerName.firstName" }
+            require(customerName.lastName != null) { "PaymentMethodPayin.ZapperQrMethod needs customerName.lastName" }
+            require(customerName.titleBefore == null) { "PaymentMethodPayin.ZapperQrMethod does not take customerName.titleBefore" }
+            require(customerName.middleName == null) { "PaymentMethodPayin.ZapperQrMethod does not take customerName.middleName" }
+            require(customerName.titleAfter == null) { "PaymentMethodPayin.ZapperQrMethod does not take customerName.titleAfter" }
         }
 
         override fun toJson(): JSONObject = JSONObject()
             .put("paymentMethodCode", "ZAPPER_QR")
             .put("emailAddress", emailAddress)
             .put("customerName", customerName.toJson())
+    }
+
+    /** A method an add-on builds as JSON, such as CARD from SYNQT's card add-on. Not for apps to create. */
+    @SynqtAddonApi
+    public class Addon(public val paymentMethodCode: String, private val json: JSONObject) : PaymentMethodPayin {
+        override fun toJson(): JSONObject = JSONObject(json.toString())
     }
 
     /** The payer's bank or wallet account. Each method needs different fields and checks them when you create it. */
@@ -892,9 +901,11 @@ public sealed interface PaymentMethod {
 }
 
 /** `paymentMethodResponse` of a created payin. Unknown methods parse to [Unknown]. */
-public sealed interface PaymentMethodResponse {
+public sealed interface PaymentMethodResponsePayin {
+    /** What the payer does next: the QR code, app link, amount, reference and expiry this method returned. */
+    public fun nextStep(): NextStep
 
-    public data class AbsaPay(
+    public data class AbsaPayMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -919,9 +930,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class CapitecPay(
+    public data class CapitecPayMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -947,9 +960,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class Card(
+    public data class CardMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -969,9 +984,11 @@ public sealed interface PaymentMethodResponse {
         public val expireAt: String? = null,
         /** TODO: */
         public val userInteraction: UserInteraction? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class CodePayment(
+    public data class CodePaymentMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -985,7 +1002,7 @@ public sealed interface PaymentMethodResponse {
         /** Your customer's mobile phone number in full international telephone number format, including country code. min 7, max 16, pattern `^\+?[0-9]+$`. Always present per spec. */
         public val phoneNumber: String? = null,
         /** Specifies location where a customer is making the payment (e.g. Always present per spec. */
-        public val paymentLocationCustomer: PaymentMethod.PaymentLocation? = null,
+        public val paymentLocationCustomer: PaymentMethodPayin.PaymentLocation? = null,
         /** Always present per spec. */
         public val money: Money? = null,
         public val vat: Money? = null,
@@ -999,9 +1016,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class CryptoOffline(
+    public data class CryptoOfflineMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1027,9 +1046,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class DuitNow(
+    public data class DuitNowPayMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1056,9 +1077,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, amountToPay = moneyRequired, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class EWallet(
+    public data class EWalletMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1078,9 +1101,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class FnbDirectEFT(
+    public data class FnbDirectEFTMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1106,9 +1131,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class Fpx(
+    public data class FpxMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1126,10 +1153,12 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
     /** The account parameters for this payment method are used to show payment instructions to the customer. */
-    public data class IMPS(
+    public data class IMPSMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1151,9 +1180,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class MobileMoney(
+    public data class MobileMoneyMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1179,9 +1210,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class MomoPay(
+    public data class MomoPayMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1205,9 +1238,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, qrCodeData = qrRawData?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class NedbankDirectEFT(
+    public data class NedbankDirectEFTMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1231,9 +1266,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class NetBanking(
+    public data class NetBankingMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1257,10 +1294,12 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(appLink = deepLink?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
     /** The account parameters for this payment method are used to show payment instructions to the customer. */
-    public data class Offline(
+    public data class OfflineMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1299,9 +1338,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, amountToPay = moneyRequired, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null }, payInto = account)
+    }
 
-    public data class Online(
+    public data class OnlineMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1322,9 +1363,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(amountToPay = moneyRequired, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class OttVoucher(
+    public data class OttVoucherMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1346,10 +1389,12 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
     /** The account parameters for this payment method are used to show payment instructions to the customer. */
-    public data class P2AV2(
+    public data class P2AV2MethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1379,7 +1424,9 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse {
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+
         /** Specifies the payment address (e.g. in UPI payment system) where customer can send the payment using theirs wallets or others banking services. */
         public data class PaymentAddress(
             /** The name of the payment address ID e.g. Always present per spec. */
@@ -1396,7 +1443,7 @@ public sealed interface PaymentMethodResponse {
         }
     }
 
-    public data class PayShap(
+    public data class PayShapMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1426,24 +1473,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse {
-        /** TODO: Add description */
-        public data class ExternalProvider(
-            /** min 1, max 128. Always present per spec. */
-            public val code: String? = null,
-            /** min 1. Always present per spec. */
-            public val name: String? = null,
-        ) {
-            public companion object {
-                public fun fromJson(json: JSONObject): ExternalProvider = ExternalProvider(
-                    code = json.str("code"),
-                    name = json.str("name"),
-                )
-            }
-        }
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
     }
 
-    public data class PayMe(
+    public data class PayMeMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1472,9 +1506,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(appLink = payMeDeepLink?.ifEmpty { null }, qrCodeImageUrl = qrCode?.ifEmpty { null }, amountToPay = moneyRequired, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class PixQR(
+    public data class PixQRMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1502,9 +1538,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, qrCodeData = qrRawData?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class PromptPay(
+    public data class PromptPayMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1529,9 +1567,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, amountToPay = moneyRequired, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class Pse(
+    public data class PseMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1553,9 +1593,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class QrisPay(
+    public data class QrisPayMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1581,9 +1623,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, qrCodeData = qrRawData?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class QrPh(
+    public data class QrPhMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1612,9 +1656,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, amountToPay = moneyRequired, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class SnapScanQr(
+    public data class SnapScanQrMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1638,9 +1684,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(appLink = snapscanQrDeepLink?.ifEmpty { null }, qrCodeImageUrl = qrCode?.ifEmpty { null }, qrCodeData = qrRawData?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class UpiCollect(
+    public data class UpiCollectMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1664,9 +1712,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class UpiId(
+    public data class UpiIdMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1684,9 +1734,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class UpiQR(
+    public data class UpiQRMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1726,10 +1778,12 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(appLink = upiQrDeepLink?.ifEmpty { null }, qrCodeImageUrl = qrCode?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
     /** The account parameters for this payment method are used to show payment instructions to the customer. */
-    public data class VaPay(
+    public data class VaPayMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1754,13 +1808,15 @@ public sealed interface PaymentMethodResponse {
         /** Your customer's e-mail address in RFC 5322 format that is used for identification of the customer's payins. */
         public val emailAddress: String? = null,
         /** Specifies location where a customer is making the payment (e.g. */
-        public val paymentLocationCustomer: PaymentMethod.PaymentLocation? = null,
+        public val paymentLocationCustomer: PaymentMethodPayin.PaymentLocation? = null,
         /** Date and time when payment was accepted. date-time. Always present per spec. */
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
         public val paymentInstructionList: List<PaymentInstruction>? = null,
-    ) : PaymentMethodResponse {
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+
         /** If not empty then it specifies special instructions for different banking services your customers has to follow when entering payment in their banking service. */
         public data class PaymentInstruction(
             /** It specifies your customer banking service to which companyCode belongs. Always present per spec. */
@@ -1777,7 +1833,7 @@ public sealed interface PaymentMethodResponse {
         }
     }
 
-    public data class VaPayVerif(
+    public data class VaPayVerifMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1799,9 +1855,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class VietQR(
+    public data class VietQRMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1825,9 +1883,11 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(qrCodeImageUrl = qrCode?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
-    public data class ZapperQr(
+    public data class ZapperQrMethodResponse(
         /** Unique Merchant Order ID provided by merchant. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
         public val idPayin: String? = null,
         /** The Unique reference ID of the Order generated by platform. max 250, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
@@ -1851,7 +1911,9 @@ public sealed interface PaymentMethodResponse {
         public val acceptedAt: String? = null,
         /** Date and time of payment expiration. date-time. Always present per spec. */
         public val expireAt: String? = null,
-    ) : PaymentMethodResponse
+    ) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = NextStep(appLink = zapperQrDeepLink?.ifEmpty { null }, qrCodeImageUrl = qrCode?.ifEmpty { null }, qrCodeData = qrRawData?.ifEmpty { null }, reference = reference?.ifEmpty { null }, expiresAt = expireAt?.ifEmpty { null })
+    }
 
     /** An account as SYNQT reports it: the payer's, or the one to pay into. Which fields are set depends on the method. */
     public data class Account(
@@ -1931,503 +1993,515 @@ public sealed interface PaymentMethodResponse {
     }
 
     /** A `paymentMethodCode` this SDK version does not know yet; new values are non-breaking API changes. */
-    public data class Unknown(public val paymentMethodCode: String, public val json: JSONObject) : PaymentMethodResponse
+    public data class Unknown(public val paymentMethodCode: String, public val json: JSONObject) : PaymentMethodResponsePayin {
+        override fun nextStep(): NextStep = parseNextStep(json)
+    }
 
     public companion object {
-        public fun fromJson(json: JSONObject): PaymentMethodResponse = when (val code = json.optString("paymentMethodCode")) {
-            "ABSA_PAY" -> AbsaPay(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                accounts = json.list("accounts") { array, index -> Account.fromJson(array.getJSONObject(index)) },
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
-                passportNumber = json.str("passportNumber"),
-                said = json.str("said"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "CAPITEC_PAY" -> CapitecPay(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
-                phoneNumber = json.str("phoneNumber"),
-                said = json.str("said"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "CARD" -> Card(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-                userInteraction = json.obj("userInteraction") { UserInteraction.fromJson(it) },
-            )
-            "CODE_PAYMENT" -> CodePayment(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                emailAddress = json.str("emailAddress"),
-                phoneNumber = json.str("phoneNumber"),
-                paymentLocationCustomer = json.obj("paymentLocationCustomer") { PaymentMethod.PaymentLocation.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "CRYPTO_OFFLINE" -> CryptoOffline(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "DUITNOW" -> DuitNow(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "EWALLET" -> EWallet(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "FNB_DIRECT_EFT" -> FnbDirectEFT(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                emailAddress = json.str("emailAddress"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                passportNumber = json.str("passportNumber"),
-                said = json.str("said"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "FPX" -> Fpx(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                emailAddress = json.str("emailAddress"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "IMPS" -> IMPS(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                qrCode = json.str("qrCode"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "MOBILE_MONEY" -> MobileMoney(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                emailAddress = json.str("emailAddress"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                phoneNumber = json.str("phoneNumber"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "MOMOPAY" -> MomoPay(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                emailAddress = json.str("emailAddress"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                qrCode = json.str("qrCode"),
-                qrRawData = json.str("qrRawData"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "NEDBANK_DIRECT_EFT" -> NedbankDirectEFT(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                said = json.str("said"),
-                emailAddress = json.str("emailAddress"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "NETBANKING" -> NetBanking(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                upiId = json.str("upiId"),
-                deepLink = json.str("deepLink"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "OFFLINE" -> Offline(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                reference = json.str("reference"),
-                processor = json.str("processor"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                returnUrl = json.str("returnUrl"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                phoneNumber = json.str("phoneNumber"),
-                emailAddress = json.str("emailAddress"),
-                productId = json.str("productId"),
-                taxId = json.str("taxId"),
-                taxIdCustomer = json.str("taxIdCustomer"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "ONLINE" -> Online(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "OTT_VOUCHER" -> OttVoucher(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                phoneNumber = json.str("phoneNumber"),
-                emailAddress = json.str("emailAddress"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "P2A_V2" -> P2AV2(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                paymentAddress = json.obj("paymentAddress") { P2AV2.PaymentAddress.fromJson(it) },
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                reference = json.str("reference"),
-                externalReference = json.obj("externalReference") { ExternalReference.fromJson(it) },
-                returnUrl = json.str("returnUrl"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "PAYSHAP" -> PayShap(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                phoneNumber = json.str("phoneNumber"),
-                emailAddress = json.str("emailAddress"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                externalProvider = json.obj("externalProvider") { PayShap.ExternalProvider.fromJson(it) },
-                said = json.str("said"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "PAY_ME" -> PayMe(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                payMeDeepLink = json.str("payMeDeepLink"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "PIXQR" -> PixQR(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                qrRawData = json.str("qrRawData"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                taxId = json.str("taxId"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "PROMPTPAY" -> PromptPay(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "PSE" -> Pse(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                emailAddress = json.str("emailAddress"),
-                phoneNumber = json.str("phoneNumber"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "QRISPAY" -> QrisPay(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                qrRawData = json.str("qrRawData"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "QRPH" -> QrPh(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "SNAPSCAN_QR" -> SnapScanQr(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                qrCode = json.str("qrCode"),
-                qrRawData = json.str("qrRawData"),
-                snapscanQrDeepLink = json.str("snapscanQrDeepLink"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "UPICOLLECT" -> UpiCollect(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                phoneNumber = json.str("phoneNumber"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                upiIdCustomer = json.str("upiIdCustomer"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "UPIID" -> UpiId(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "UPIQR" -> UpiQR(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                externalReference = json.obj("externalReference") { ExternalReference.fromJson(it) },
-                processor = json.str("processor"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                upiQrDeepLink = json.str("upiQrDeepLink"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                upiId = json.str("upiId"),
-                upiIdCustomer = json.str("upiIdCustomer"),
-                phoneNumber = json.str("phoneNumber"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "VAPAY" -> VaPay(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                reference = json.str("reference"),
-                processor = json.str("processor"),
-                returnUrl = json.str("returnUrl"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                phoneNumber = json.str("phoneNumber"),
-                emailAddress = json.str("emailAddress"),
-                paymentLocationCustomer = json.obj("paymentLocationCustomer") { PaymentMethod.PaymentLocation.fromJson(it) },
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-                paymentInstructionList = json.list("paymentInstructionList") { array, index -> VaPay.PaymentInstruction.fromJson(array.getJSONObject(index)) },
-            )
-            "VAPAY_VERIF" -> VaPayVerif(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                account = json.obj("account") { Account.fromJson(it) },
-                accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "VIETQR" -> VietQR(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                reference = json.str("reference"),
-                qrName = json.str("qrName"),
-                qrCode = json.str("qrCode"),
-                paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            "ZAPPER_QR" -> ZapperQr(
-                idPayin = json.str("idPayin"),
-                idPayment = json.str("idPayment"),
-                money = json.obj("money") { Money.fromJson(it) },
-                vat = json.obj("vat") { Money.fromJson(it) },
-                merchantName = json.str("merchantName"),
-                qrCode = json.str("qrCode"),
-                qrRawData = json.str("qrRawData"),
-                zapperQrDeepLink = json.str("zapperQrDeepLink"),
-                reference = json.str("reference"),
-                returnUrl = json.str("returnUrl"),
-                acceptedAt = json.str("acceptedAt"),
-                expireAt = json.str("expireAt"),
-            )
-            else -> Unknown(code, json)
+        /** A known method whose fields don't parse also becomes [Unknown], so a response never fails on them. */
+        public fun fromJson(json: JSONObject): PaymentMethodResponsePayin {
+            val code = json.optString("paymentMethodCode")
+            return try {
+                when (code) {
+                    "ABSA_PAY" -> AbsaPayMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        accounts = json.list("accounts") { array, index -> Account.fromJson(array.getJSONObject(index)) },
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
+                        passportNumber = json.str("passportNumber"),
+                        said = json.str("said"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "CAPITEC_PAY" -> CapitecPayMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
+                        phoneNumber = json.str("phoneNumber"),
+                        said = json.str("said"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "CARD" -> CardMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                        userInteraction = json.obj("userInteraction") { UserInteraction.fromJson(it) },
+                    )
+                    "CODE_PAYMENT" -> CodePaymentMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        emailAddress = json.str("emailAddress"),
+                        phoneNumber = json.str("phoneNumber"),
+                        paymentLocationCustomer = json.obj("paymentLocationCustomer") { PaymentMethodPayin.PaymentLocation.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "CRYPTO_OFFLINE" -> CryptoOfflineMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "DUITNOW" -> DuitNowPayMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "EWALLET" -> EWalletMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "FNB_DIRECT_EFT" -> FnbDirectEFTMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        emailAddress = json.str("emailAddress"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        passportNumber = json.str("passportNumber"),
+                        said = json.str("said"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "FPX" -> FpxMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        emailAddress = json.str("emailAddress"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "IMPS" -> IMPSMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        qrCode = json.str("qrCode"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "MOBILE_MONEY" -> MobileMoneyMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        emailAddress = json.str("emailAddress"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        phoneNumber = json.str("phoneNumber"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "MOMOPAY" -> MomoPayMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        emailAddress = json.str("emailAddress"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        qrCode = json.str("qrCode"),
+                        qrRawData = json.str("qrRawData"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "NEDBANK_DIRECT_EFT" -> NedbankDirectEFTMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        said = json.str("said"),
+                        emailAddress = json.str("emailAddress"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "NETBANKING" -> NetBankingMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        upiId = json.str("upiId"),
+                        deepLink = json.str("deepLink"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "OFFLINE" -> OfflineMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        reference = json.str("reference"),
+                        processor = json.str("processor"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        returnUrl = json.str("returnUrl"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        phoneNumber = json.str("phoneNumber"),
+                        emailAddress = json.str("emailAddress"),
+                        productId = json.str("productId"),
+                        taxId = json.str("taxId"),
+                        taxIdCustomer = json.str("taxIdCustomer"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "ONLINE" -> OnlineMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "OTT_VOUCHER" -> OttVoucherMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        phoneNumber = json.str("phoneNumber"),
+                        emailAddress = json.str("emailAddress"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "P2A_V2" -> P2AV2MethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        paymentAddress = json.obj("paymentAddress") { P2AV2MethodResponse.PaymentAddress.fromJson(it) },
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        reference = json.str("reference"),
+                        externalReference = json.obj("externalReference") { ExternalReference.fromJson(it) },
+                        returnUrl = json.str("returnUrl"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "PAYSHAP" -> PayShapMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        phoneNumber = json.str("phoneNumber"),
+                        emailAddress = json.str("emailAddress"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        externalProvider = json.obj("externalProvider") { ExternalProvider.fromJson(it) },
+                        said = json.str("said"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "PAY_ME" -> PayMeMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        payMeDeepLink = json.str("payMeDeepLink"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "PIXQR" -> PixQRMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        qrRawData = json.str("qrRawData"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        taxId = json.str("taxId"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "PROMPTPAY" -> PromptPayMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "PSE" -> PseMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        emailAddress = json.str("emailAddress"),
+                        phoneNumber = json.str("phoneNumber"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "QRISPAY" -> QrisPayMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        qrRawData = json.str("qrRawData"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "QRPH" -> QrPhMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        moneyRequired = json.obj("moneyRequired") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "SNAPSCAN_QR" -> SnapScanQrMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        qrCode = json.str("qrCode"),
+                        qrRawData = json.str("qrRawData"),
+                        snapscanQrDeepLink = json.str("snapscanQrDeepLink"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "UPICOLLECT" -> UpiCollectMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        phoneNumber = json.str("phoneNumber"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        upiIdCustomer = json.str("upiIdCustomer"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "UPIID" -> UpiIdMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "UPIQR" -> UpiQRMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        accountCustomerUsedForPayment = json.obj("accountCustomerUsedForPayment") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        externalReference = json.obj("externalReference") { ExternalReference.fromJson(it) },
+                        processor = json.str("processor"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        upiQrDeepLink = json.str("upiQrDeepLink"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        upiId = json.str("upiId"),
+                        upiIdCustomer = json.str("upiIdCustomer"),
+                        phoneNumber = json.str("phoneNumber"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "VAPAY" -> VaPayMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        reference = json.str("reference"),
+                        processor = json.str("processor"),
+                        returnUrl = json.str("returnUrl"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        phoneNumber = json.str("phoneNumber"),
+                        emailAddress = json.str("emailAddress"),
+                        paymentLocationCustomer = json.obj("paymentLocationCustomer") { PaymentMethodPayin.PaymentLocation.fromJson(it) },
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                        paymentInstructionList = json.list("paymentInstructionList") { array, index -> VaPayMethodResponse.PaymentInstruction.fromJson(array.getJSONObject(index)) },
+                    )
+                    "VAPAY_VERIF" -> VaPayVerifMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        account = json.obj("account") { Account.fromJson(it) },
+                        accountCustomer = json.obj("accountCustomer") { Account.fromJson(it) },
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "VIETQR" -> VietQRMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        reference = json.str("reference"),
+                        qrName = json.str("qrName"),
+                        qrCode = json.str("qrCode"),
+                        paymentOperator = json.obj("paymentOperator") { SelectedPaymentOperatorIncoming.fromJson(it) },
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    "ZAPPER_QR" -> ZapperQrMethodResponse(
+                        idPayin = json.str("idPayin"),
+                        idPayment = json.str("idPayment"),
+                        money = json.obj("money") { Money.fromJson(it) },
+                        vat = json.obj("vat") { Money.fromJson(it) },
+                        merchantName = json.str("merchantName"),
+                        qrCode = json.str("qrCode"),
+                        qrRawData = json.str("qrRawData"),
+                        zapperQrDeepLink = json.str("zapperQrDeepLink"),
+                        reference = json.str("reference"),
+                        returnUrl = json.str("returnUrl"),
+                        acceptedAt = json.str("acceptedAt"),
+                        expireAt = json.str("expireAt"),
+                    )
+                    else -> Unknown(code, json)
+                }
+            } catch (error: IllegalArgumentException) {
+                Unknown(code, json)
+            } catch (error: JSONException) {
+                Unknown(code, json)
+            }
         }
     }
 }
@@ -2456,18 +2530,78 @@ public sealed interface UserInteraction {
     public data class Unknown(public val type: String, public val json: JSONObject) : UserInteraction
 
     public companion object {
-        public fun fromJson(json: JSONObject): UserInteraction = when (val code = json.optString("type")) {
-            "CONTENT" -> Content(
-                content = json.str("content"),
+        /** A known method whose fields don't parse also becomes [Unknown], so a response never fails on them. */
+        public fun fromJson(json: JSONObject): UserInteraction {
+            val code = json.optString("type")
+            return try {
+                when (code) {
+                    "CONTENT" -> Content(
+                        content = json.str("content"),
+                    )
+                    "FORM" -> Form(
+                        content = json.str("content"),
+                    )
+                    "OTP_REQUIRED" -> OtpRequired
+                    "REDIRECT" -> Redirect(
+                        url = json.str("url"),
+                    )
+                    else -> Unknown(code, json)
+                }
+            } catch (error: IllegalArgumentException) {
+                Unknown(code, json)
+            } catch (error: JSONException) {
+                Unknown(code, json)
+            }
+        }
+    }
+}
+
+/** How a payin's money was settled to the merchant. Unknown methods parse to [Unknown]. */
+public sealed interface SettlementMethod {
+
+    /** Payment method for sending funds from your crypto wallet to external crypto wallet. It requires customer to provide a receiving crypto wallet details in format related to chosen blockchain protocol. */
+    public data class SettlementCryptoTransferMethod(
+        /** Parameters of a customer's crypto wallet information where your customer would like his funds to be transferred. Always present per spec. */
+        public val account: Account? = null,
+        /** One of following can serve as Payment Operator: min 1, max 30, pattern `^[A-Za-z0-9_-]+$`. Always present per spec. */
+        public val paymentOperatorCode: String? = null,
+        /** Reference number of transaction. */
+        public val transactionReference: String? = null,
+    ) : SettlementMethod
+
+    /** The account a settlement is sent to. */
+    public data class Account(
+        /** Address of a customer's crypto wallet where your customer would like his funds to be transferred. min 1, max 62, pattern `^[a-zA-Z0-9]*$`. */
+        public val accountNumber: String? = null,
+    ) {
+        public companion object {
+            public fun fromJson(json: JSONObject): Account = Account(
+                accountNumber = json.str("accountNumber"),
             )
-            "FORM" -> Form(
-                content = json.str("content"),
-            )
-            "OTP_REQUIRED" -> OtpRequired
-            "REDIRECT" -> Redirect(
-                url = json.str("url"),
-            )
-            else -> Unknown(code, json)
+        }
+    }
+
+    /** A `paymentMethodCode` this SDK version does not know yet; new values are non-breaking API changes. */
+    public data class Unknown(public val paymentMethodCode: String, public val json: JSONObject) : SettlementMethod
+
+    public companion object {
+        /** A known method whose fields don't parse also becomes [Unknown], so a response never fails on them. */
+        public fun fromJson(json: JSONObject): SettlementMethod {
+            val code = json.optString("paymentMethodCode")
+            return try {
+                when (code) {
+                    "CRYPTO_TRANSFER" -> SettlementCryptoTransferMethod(
+                        account = json.obj("account") { Account.fromJson(it) },
+                        paymentOperatorCode = json.str("paymentOperatorCode"),
+                        transactionReference = json.str("transactionReference"),
+                    )
+                    else -> Unknown(code, json)
+                }
+            } catch (error: IllegalArgumentException) {
+                Unknown(code, json)
+            } catch (error: JSONException) {
+                Unknown(code, json)
+            }
         }
     }
 }

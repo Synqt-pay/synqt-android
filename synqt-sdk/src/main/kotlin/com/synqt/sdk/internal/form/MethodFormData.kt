@@ -1,9 +1,9 @@
 package com.synqt.sdk.internal.form
 
-import com.synqt.sdk.PaymentMethod
+import com.synqt.sdk.PaymentMethodPayin
 import com.synqt.sdk.R
 
-/** One entry per direct API payment method a payer can fill in, shown by [Payin.presentPaymentSheet]. */
+/** One entry per direct API payment method a payer can fill in, shown by [PayinCheckout.presentPaymentSheet]. */
 internal val METHOD_FORMS = listOf(
     MethodForm("ABSA_PAY", R.string.synqt_absa_pay, listOf(
         FormField("emailAddress", R.string.synqt_email_address_optional, FieldKind.EMAIL, required = false, invalid = R.string.synqt_enter_a_valid_email_address),
@@ -17,17 +17,17 @@ internal val METHOD_FORMS = listOf(
         FormField("customerName.lastName", R.string.synqt_last_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
         FormField("customerName.titleAfter", R.string.synqt_name_suffix_optional, FieldKind.TEXT, required = false, section = R.string.synqt_your_name),
     ), oneOfs = listOf(OneOf(R.string.synqt_how_do_you_want_to_confirm_it_s_you, listOf(Choice(R.string.synqt_bank_account, listOf("account.accountNumber", "account.accountName")), Choice(R.string.synqt_south_african_id_number, listOf("said")), Choice(R.string.synqt_passport_number, listOf("passportNumber")))))) { values ->
-        PaymentMethod.AbsaPay(
+        PaymentMethodPayin.AbsaPayMethod(
             emailAddress = values.str("emailAddress"),
             passportNumber = values.str("passportNumber"),
             said = values.str("said"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountNumber = values.str("account.accountNumber"),
                     accountName = values.str("account.accountName"),
                 )
             },
-            customerName = PaymentMethod.PersonName(
+            customerName = PaymentMethodPayin.PersonName(
                 titleBefore = values.str("customerName.titleBefore"),
                 firstName = values.str("customerName.firstName"),
                 middleName = values.str("customerName.middleName"),
@@ -49,18 +49,18 @@ internal val METHOD_FORMS = listOf(
         FormField("customerName.lastName", R.string.synqt_last_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
         FormField("customerName.titleAfter", R.string.synqt_name_suffix_optional, FieldKind.TEXT, required = false, section = R.string.synqt_your_name),
     ), oneOfs = listOf(OneOf(R.string.synqt_how_do_you_want_to_confirm_it_s_you, listOf(Choice(R.string.synqt_bank_account, listOf("account.accountNumber", "account.accountName")), Choice(R.string.synqt_mobile_number, listOf("phoneNumber")), Choice(R.string.synqt_south_african_id_number, listOf("said")))))) { values ->
-        PaymentMethod.CapitecPay(
+        PaymentMethodPayin.CapitecPayMethod(
             paymentOperatorCode = values.str("paymentOperatorCode"),
             emailAddress = values.str("emailAddress"),
             phoneNumber = values.str("phoneNumber"),
             said = values.str("said"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                     accountNumber = values.str("account.accountNumber"),
                 )
             },
-            customerName = PaymentMethod.PersonName(
+            customerName = PaymentMethodPayin.PersonName(
                 titleBefore = values.str("customerName.titleBefore"),
                 firstName = values.str("customerName.firstName"),
                 middleName = values.str("customerName.middleName"),
@@ -78,14 +78,14 @@ internal val METHOD_FORMS = listOf(
         FormField("paymentLocation.city", R.string.synqt_city, FieldKind.TEXT, required = true, section = R.string.synqt_where_you_are_paying),
         FormField("paymentLocation.district", R.string.synqt_district, FieldKind.TEXT, required = true, section = R.string.synqt_where_you_are_paying),
     )) { values ->
-        PaymentMethod.CodePayment(
+        PaymentMethodPayin.CodePaymentMethod(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             emailAddress = values.req("emailAddress", values.str("emailAddress")),
             phoneNumber = values.req("phoneNumber", values.str("phoneNumber")),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
             ),
-            paymentLocation = PaymentMethod.PaymentLocation(
+            paymentLocation = PaymentMethodPayin.PaymentLocation(
                 postalCode = values.req("paymentLocation.postalCode", values.str("paymentLocation.postalCode")),
                 city = values.req("paymentLocation.city", values.str("paymentLocation.city")),
                 district = values.req("paymentLocation.district", values.str("paymentLocation.district")),
@@ -96,7 +96,7 @@ internal val METHOD_FORMS = listOf(
         FormField("paymentOperatorCode", R.string.synqt_bank_or_provider, FieldKind.OPERATOR, required = true, maxLength = 30, pattern = "^[A-Za-z0-9_-]+\$", invalid = R.string.synqt_use_letters_numbers_and_only),
         FormField("emailAddress", R.string.synqt_email_address_optional, FieldKind.EMAIL, required = false, invalid = R.string.synqt_enter_a_valid_email_address),
     )) { values ->
-        PaymentMethod.CryptoOffline(
+        PaymentMethodPayin.CryptoOfflineMethod(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             emailAddress = values.str("emailAddress"),
         )
@@ -107,10 +107,10 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountNumber", R.string.synqt_account_number_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account),
     )) { values ->
-        PaymentMethod.DuitNow(
+        PaymentMethodPayin.DuitNowMethod(
             paymentOperatorCode = values.str("paymentOperatorCode"),
             emailAddress = values.str("emailAddress"),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
                 accountNumber = values.str("account.accountNumber"),
             ),
@@ -122,12 +122,12 @@ internal val METHOD_FORMS = listOf(
         FormField("phoneNumber", R.string.synqt_mobile_number_optional, FieldKind.PHONE, required = false, placeholder = R.string.synqt_27821234567, minLength = 7, maxLength = 16, pattern = "^\\+?[0-9]+\$", invalid = R.string.synqt_enter_the_number_with_your_country_code_and_no_s),
         FormField("account.accountName", R.string.synqt_account_holder_name_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
     )) { values ->
-        PaymentMethod.EWallet(
+        PaymentMethodPayin.EWalletMethod(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             emailAddress = values.str("emailAddress"),
             phoneNumber = values.str("phoneNumber"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                 )
             },
@@ -141,15 +141,15 @@ internal val METHOD_FORMS = listOf(
         FormField("customerName.lastName", R.string.synqt_last_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
         FormField("account.accountNumber", R.string.synqt_account_number, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account),
     ), oneOfs = listOf(OneOf(R.string.synqt_how_do_you_want_to_confirm_it_s_you, listOf(Choice(R.string.synqt_south_african_id_number, listOf("said")), Choice(R.string.synqt_passport_number, listOf("passportNumber")))))) { values ->
-        PaymentMethod.FnbDirectEFT(
+        PaymentMethodPayin.FnbDirectEFTMethod(
             emailAddress = values.req("emailAddress", values.str("emailAddress")),
             passportNumber = values.str("passportNumber"),
             said = values.str("said"),
-            customerName = PaymentMethod.PersonName(
+            customerName = PaymentMethodPayin.PersonName(
                 firstName = values.req("customerName.firstName", values.str("customerName.firstName")),
                 lastName = values.req("customerName.lastName", values.str("customerName.lastName")),
             ),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountNumber = values.req("account.accountNumber", values.str("account.accountNumber")),
             ),
         )
@@ -160,10 +160,10 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountType", R.string.synqt_account_type, FieldKind.CHOICE, required = true, section = R.string.synqt_bank_account, options = listOf("savings" to R.string.synqt_savings, "current" to R.string.synqt_current, "corporate" to R.string.synqt_corporate)),
     )) { values ->
-        PaymentMethod.Fpx(
+        PaymentMethodPayin.FpxMethod(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             emailAddress = values.str("emailAddress"),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
                 accountType = values.req("account.accountType", values.str("account.accountType")),
             ),
@@ -174,9 +174,9 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountNumber", R.string.synqt_account_number_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account),
     )) { values ->
-        PaymentMethod.IMPS(
+        PaymentMethodPayin.IMPSMethod(
             emailAddress = values.str("emailAddress"),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
                 accountNumber = values.str("account.accountNumber"),
             ),
@@ -188,11 +188,11 @@ internal val METHOD_FORMS = listOf(
         FormField("phoneNumber", R.string.synqt_mobile_number, FieldKind.PHONE, required = true, placeholder = R.string.synqt_27821234567, minLength = 7, maxLength = 16, pattern = "^\\+?[0-9]+\$", invalid = R.string.synqt_enter_the_number_with_your_country_code_and_no_s),
         FormField("account.accountName", R.string.synqt_account_holder_name, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
     )) { values ->
-        PaymentMethod.MobileMoney(
+        PaymentMethodPayin.MobileMoneyMethod(
             paymentOperatorCode = values.str("paymentOperatorCode"),
             emailAddress = values.str("emailAddress"),
             phoneNumber = values.req("phoneNumber", values.str("phoneNumber")),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
             ),
         )
@@ -200,7 +200,7 @@ internal val METHOD_FORMS = listOf(
     MethodForm("MOMOPAY", R.string.synqt_momopay, listOf(
         FormField("emailAddress", R.string.synqt_email_address_optional, FieldKind.EMAIL, required = false, invalid = R.string.synqt_enter_a_valid_email_address),
     )) { values ->
-        PaymentMethod.MomoPay(
+        PaymentMethodPayin.MomoPayMethod(
             emailAddress = values.str("emailAddress"),
         )
     },
@@ -214,13 +214,13 @@ internal val METHOD_FORMS = listOf(
         FormField("customerName.lastName", R.string.synqt_last_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
         FormField("customerName.titleAfter", R.string.synqt_name_suffix_optional, FieldKind.TEXT, required = false, section = R.string.synqt_your_name),
     )) { values ->
-        PaymentMethod.NedbankDirectEFT(
+        PaymentMethodPayin.NedbankDirectEFTMethod(
             said = values.req("said", values.str("said")),
             emailAddress = values.str("emailAddress"),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
             ),
-            customerName = PaymentMethod.PersonName(
+            customerName = PaymentMethodPayin.PersonName(
                 titleBefore = values.str("customerName.titleBefore"),
                 firstName = values.str("customerName.firstName"),
                 middleName = values.str("customerName.middleName"),
@@ -236,12 +236,12 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountNumber", R.string.synqt_account_number_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional),
     )) { values ->
-        PaymentMethod.NetBanking(
+        PaymentMethodPayin.NetBankingMethod(
             paymentOperatorCode = values.str("paymentOperatorCode"),
             emailAddress = values.str("emailAddress"),
             phoneNumber = values.str("phoneNumber"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                     accountNumber = values.str("account.accountNumber"),
                 )
@@ -262,19 +262,19 @@ internal val METHOD_FORMS = listOf(
         FormField("customerName.lastName", R.string.synqt_last_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
         FormField("customerName.titleAfter", R.string.synqt_name_suffix_optional, FieldKind.TEXT, required = false, section = R.string.synqt_your_name),
     )) { values ->
-        PaymentMethod.Offline(
+        PaymentMethodPayin.OfflineMethod(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             emailAddress = values.str("emailAddress"),
             phoneNumber = values.str("phoneNumber"),
             productId = values.str("productId"),
             taxId = values.str("taxId"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                     accountNumber = values.str("account.accountNumber"),
                 )
             },
-            customerName = PaymentMethod.PersonName(
+            customerName = PaymentMethodPayin.PersonName(
                 titleBefore = values.str("customerName.titleBefore"),
                 firstName = values.req("customerName.firstName", values.str("customerName.firstName")),
                 middleName = values.str("customerName.middleName"),
@@ -290,10 +290,10 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountNumber", R.string.synqt_account_number, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account),
         FormField("account.accountType", R.string.synqt_account_type, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
     )) { values ->
-        PaymentMethod.Online(
+        PaymentMethodPayin.OnlineMethod(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             emailAddress = values.req("emailAddress", values.str("emailAddress")),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
                 accountNumber = values.req("account.accountNumber", values.str("account.accountNumber")),
                 accountType = values.req("account.accountType", values.str("account.accountType")),
@@ -310,11 +310,11 @@ internal val METHOD_FORMS = listOf(
         FormField("customerName.lastName", R.string.synqt_last_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
         FormField("customerName.titleAfter", R.string.synqt_name_suffix_optional, FieldKind.TEXT, required = false, section = R.string.synqt_your_name),
     )) { values ->
-        PaymentMethod.OttVoucher(
+        PaymentMethodPayin.OttVoucherMethod(
             voucherPin = values.req("voucherPin", values.str("voucherPin")),
             phoneNumber = values.req("phoneNumber", values.str("phoneNumber")),
             emailAddress = values.req("emailAddress", values.str("emailAddress")),
-            customerName = PaymentMethod.PersonName(
+            customerName = PaymentMethodPayin.PersonName(
                 titleBefore = values.str("customerName.titleBefore"),
                 firstName = values.req("customerName.firstName", values.str("customerName.firstName")),
                 middleName = values.str("customerName.middleName"),
@@ -329,11 +329,11 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountNumber", R.string.synqt_account_number_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional),
     )) { values ->
-        PaymentMethod.P2AV2(
+        PaymentMethodPayin.P2AV2Method(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             emailAddress = values.str("emailAddress"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                     accountNumber = values.str("account.accountNumber"),
                 )
@@ -355,7 +355,7 @@ internal val METHOD_FORMS = listOf(
         FormField("customerName.lastName", R.string.synqt_last_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
         FormField("customerName.titleAfter", R.string.synqt_name_suffix_optional, FieldKind.TEXT, required = false, section = R.string.synqt_your_name),
     ), oneOfs = listOf(OneOf(R.string.synqt_how_do_you_want_to_pay, listOf(Choice(R.string.synqt_bank_account, listOf("account.accountNumber", "account.accountName"), required = listOf("account.accountNumber", "account.accountName")), Choice(R.string.synqt_mobile_number, listOf("phoneNumber", "externalProviderCode"), required = listOf("phoneNumber", "externalProviderCode")))), OneOf(R.string.synqt_which_id_do_you_want_to_give, listOf(Choice(R.string.synqt_south_african_id_number, listOf("said"), required = emptyList()), Choice(R.string.synqt_passport_number, listOf("passportNumber"), required = emptyList()))))) { values ->
-        PaymentMethod.PayShap(
+        PaymentMethodPayin.PayShapMethod(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             phoneNumber = values.str("phoneNumber"),
             emailAddress = values.str("emailAddress"),
@@ -363,12 +363,12 @@ internal val METHOD_FORMS = listOf(
             said = values.str("said"),
             externalProviderCode = values.str("externalProviderCode"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                     accountNumber = values.str("account.accountNumber"),
                 )
             },
-            customerName = PaymentMethod.PersonName(
+            customerName = PaymentMethodPayin.PersonName(
                 titleBefore = values.str("customerName.titleBefore"),
                 firstName = values.str("customerName.firstName"),
                 middleName = values.str("customerName.middleName"),
@@ -383,10 +383,10 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountNumber", R.string.synqt_account_number_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account),
     )) { values ->
-        PaymentMethod.PayMe(
+        PaymentMethodPayin.PayMeMethod(
             emailAddress = values.str("emailAddress"),
             phoneNumber = values.str("phoneNumber"),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
                 accountNumber = values.str("account.accountNumber"),
             ),
@@ -396,9 +396,9 @@ internal val METHOD_FORMS = listOf(
         FormField("taxId", R.string.synqt_cpf_or_cnpj, FieldKind.TEXT, required = true, hint = R.string.synqt_14_characters, minLength = 14, maxLength = 14, invalid = R.string.synqt_enter_your_14_character_cpf_or_cnpj),
         FormField("account.accountName", R.string.synqt_account_holder_name, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
     )) { values ->
-        PaymentMethod.PixQR(
+        PaymentMethodPayin.PixQRMethod(
             taxId = values.req("taxId", values.str("taxId")),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
             ),
         )
@@ -409,10 +409,10 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountNumber", R.string.synqt_account_number, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account),
     )) { values ->
-        PaymentMethod.PromptPay(
+        PaymentMethodPayin.PromptPayMethod(
             paymentOperatorCode = values.str("paymentOperatorCode"),
             emailAddress = values.str("emailAddress"),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.str("account.accountName"),
                 accountNumber = values.req("account.accountNumber", values.str("account.accountNumber")),
             ),
@@ -423,10 +423,10 @@ internal val METHOD_FORMS = listOf(
         FormField("phoneNumber", R.string.synqt_mobile_number, FieldKind.PHONE, required = true, placeholder = R.string.synqt_27821234567, minLength = 7, maxLength = 16, pattern = "^\\+?[0-9]+\$", invalid = R.string.synqt_enter_the_number_with_your_country_code_and_no_s),
         FormField("account.accountName", R.string.synqt_account_holder_name, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
     )) { values ->
-        PaymentMethod.Pse(
+        PaymentMethodPayin.PseMethod(
             emailAddress = values.req("emailAddress", values.str("emailAddress")),
             phoneNumber = values.req("phoneNumber", values.str("phoneNumber")),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
             ),
         )
@@ -436,10 +436,10 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountNumber", R.string.synqt_account_number_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional),
     )) { values ->
-        PaymentMethod.QrisPay(
+        PaymentMethodPayin.QrisPayMethod(
             emailAddress = values.str("emailAddress"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                     accountNumber = values.str("account.accountNumber"),
                 )
@@ -453,12 +453,12 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountNumber", R.string.synqt_account_number_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional),
     )) { values ->
-        PaymentMethod.QrPh(
+        PaymentMethodPayin.QrPhMethod(
             paymentOperatorCode = values.str("paymentOperatorCode"),
             emailAddress = values.str("emailAddress"),
             phoneNumber = values.str("phoneNumber"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                     accountNumber = values.str("account.accountNumber"),
                 )
@@ -473,9 +473,9 @@ internal val METHOD_FORMS = listOf(
         FormField("customerName.lastName", R.string.synqt_last_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
         FormField("customerName.titleAfter", R.string.synqt_name_suffix_optional, FieldKind.TEXT, required = false, section = R.string.synqt_your_name),
     )) { values ->
-        PaymentMethod.SnapScanQr(
+        PaymentMethodPayin.SnapScanQrMethod(
             emailAddress = values.req("emailAddress", values.str("emailAddress")),
-            customerName = PaymentMethod.PersonName(
+            customerName = PaymentMethodPayin.PersonName(
                 titleBefore = values.str("customerName.titleBefore"),
                 firstName = values.req("customerName.firstName", values.str("customerName.firstName")),
                 middleName = values.str("customerName.middleName"),
@@ -490,11 +490,11 @@ internal val METHOD_FORMS = listOf(
         FormField("phoneNumber", R.string.synqt_mobile_number, FieldKind.PHONE, required = true, placeholder = R.string.synqt_27821234567, minLength = 7, maxLength = 16, pattern = "^\\+?[0-9]+\$", invalid = R.string.synqt_enter_the_number_with_your_country_code_and_no_s),
         FormField("account.accountName", R.string.synqt_account_holder_name, FieldKind.TEXT, required = true, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
     )) { values ->
-        PaymentMethod.UpiCollect(
+        PaymentMethodPayin.UpiCollectMethod(
             upiId = values.req("upiId", values.str("upiId")),
             emailAddress = values.req("emailAddress", values.str("emailAddress")),
             phoneNumber = values.req("phoneNumber", values.str("phoneNumber")),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.req("account.accountName", values.str("account.accountName")),
             ),
         )
@@ -503,7 +503,7 @@ internal val METHOD_FORMS = listOf(
         FormField("upiId", R.string.synqt_upi_id, FieldKind.TEXT, required = true, placeholder = R.string.synqt_name_bank, maxLength = 100, pattern = "[a-zA-Z0-9_\\-\\.]+@[a-zA-Z0-9_\\.]+", invalid = R.string.synqt_enter_a_upi_id_like_name_bank),
         FormField("emailAddress", R.string.synqt_email_address_optional, FieldKind.EMAIL, required = false, invalid = R.string.synqt_enter_a_valid_email_address),
     )) { values ->
-        PaymentMethod.UpiId(
+        PaymentMethodPayin.UpiIdMethod(
             upiId = values.req("upiId", values.str("upiId")),
             emailAddress = values.str("emailAddress"),
         )
@@ -515,13 +515,13 @@ internal val METHOD_FORMS = listOf(
         FormField("phoneNumber", R.string.synqt_mobile_number_optional, FieldKind.PHONE, required = false, placeholder = R.string.synqt_27821234567, minLength = 7, maxLength = 16, pattern = "^\\+?[0-9]+\$", invalid = R.string.synqt_enter_the_number_with_your_country_code_and_no_s),
         FormField("account.accountName", R.string.synqt_account_holder_name_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account_optional, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
     )) { values ->
-        PaymentMethod.UpiQR(
+        PaymentMethodPayin.UpiQRMethod(
             paymentOperatorCode = values.str("paymentOperatorCode"),
             upiId = values.str("upiId"),
             emailAddress = values.str("emailAddress"),
             phoneNumber = values.str("phoneNumber"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                 )
             },
@@ -537,17 +537,17 @@ internal val METHOD_FORMS = listOf(
         FormField("paymentLocation.city", R.string.synqt_city, FieldKind.TEXT, required = true, section = R.string.synqt_where_you_are_paying),
         FormField("paymentLocation.district", R.string.synqt_district, FieldKind.TEXT, required = true, section = R.string.synqt_where_you_are_paying),
     )) { values ->
-        PaymentMethod.VaPay(
+        PaymentMethodPayin.VaPayMethod(
             paymentOperatorCode = values.str("paymentOperatorCode"),
             emailAddress = values.str("emailAddress"),
             phoneNumber = values.str("phoneNumber"),
             account = values.group("account") {
-                PaymentMethod.Account(
+                PaymentMethodPayin.Account(
                     accountName = values.str("account.accountName"),
                     accountNumber = values.str("account.accountNumber"),
                 )
             },
-            paymentLocation = PaymentMethod.PaymentLocation(
+            paymentLocation = PaymentMethodPayin.PaymentLocation(
                 postalCode = values.req("paymentLocation.postalCode", values.str("paymentLocation.postalCode")),
                 city = values.req("paymentLocation.city", values.str("paymentLocation.city")),
                 district = values.req("paymentLocation.district", values.str("paymentLocation.district")),
@@ -560,10 +560,10 @@ internal val METHOD_FORMS = listOf(
         FormField("account.accountName", R.string.synqt_account_holder_name_optional, FieldKind.TEXT, required = false, section = R.string.synqt_bank_account, maxLength = 64, pattern = "^(\\p{L}\\p{M}*?|[\\d, ;:_'\"!%=@#&\\-\\.\\?\\\$\\(\\)\\+\\*\\|])*\$", invalid = R.string.synqt_use_letters_numbers_spaces_and_common_punctuatio),
         FormField("account.accountNumber", R.string.synqt_account_number, FieldKind.NUMBER, required = true, hint = R.string.synqt_numbers_only, section = R.string.synqt_bank_account, pattern = "^[0-9-]*\$", invalid = R.string.synqt_use_numbers_only),
     )) { values ->
-        PaymentMethod.VaPayVerif(
+        PaymentMethodPayin.VaPayVerifMethod(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             emailAddress = values.str("emailAddress"),
-            account = PaymentMethod.Account(
+            account = PaymentMethodPayin.Account(
                 accountName = values.str("account.accountName"),
                 accountNumber = values.req("account.accountNumber", values.str("account.accountNumber")),
             ),
@@ -573,7 +573,7 @@ internal val METHOD_FORMS = listOf(
         FormField("paymentOperatorCode", R.string.synqt_bank_or_provider, FieldKind.OPERATOR, required = true, maxLength = 30, pattern = "^[A-Za-z0-9_-]+\$", invalid = R.string.synqt_use_letters_numbers_and_only),
         FormField("emailAddress", R.string.synqt_email_address_optional, FieldKind.EMAIL, required = false, invalid = R.string.synqt_enter_a_valid_email_address),
     )) { values ->
-        PaymentMethod.VietQR(
+        PaymentMethodPayin.VietQRMethod(
             paymentOperatorCode = values.req("paymentOperatorCode", values.str("paymentOperatorCode")),
             emailAddress = values.str("emailAddress"),
         )
@@ -583,9 +583,9 @@ internal val METHOD_FORMS = listOf(
         FormField("customerName.firstName", R.string.synqt_first_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
         FormField("customerName.lastName", R.string.synqt_last_name, FieldKind.TEXT, required = true, section = R.string.synqt_your_name),
     )) { values ->
-        PaymentMethod.ZapperQr(
+        PaymentMethodPayin.ZapperQrMethod(
             emailAddress = values.req("emailAddress", values.str("emailAddress")),
-            customerName = PaymentMethod.PersonName(
+            customerName = PaymentMethodPayin.PersonName(
                 firstName = values.req("customerName.firstName", values.str("customerName.firstName")),
                 lastName = values.req("customerName.lastName", values.str("customerName.lastName")),
             ),
