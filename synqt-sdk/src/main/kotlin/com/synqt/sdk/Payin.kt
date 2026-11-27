@@ -61,7 +61,7 @@ public class Payin internal constructor(
      * details passed the sheet's checks; SYNQT may still refuse them, and then there may be no payin). Both run on the
      * main thread. The call returns once the sheet has closed.
      *
-     * The sheet is its own activity and survives rotation itself. Cancelling the call closes it, as on iOS, so call
+     * The sheet is its own activity and survives rotation itself. Cancelling the call closes it, so call
      * this from a scope that outlives your activity being rebuilt, such as `viewModelScope`: from `lifecycleScope`, a
      * rotation (unless your activity handles it) cancels the call and closes the sheet. If Android stops your app
      * while the payer is in another app, the sheet closes; the payin carries on, so check [status] when they return.
@@ -180,7 +180,7 @@ public class Payin internal constructor(
      * Shows SYNQT's hosted Payment Web App inside the app, over [activity], and returns once the payer reaches the
      * returnUrl or closes it. [onPresented] runs once it is on screen. Links to other apps (bank apps, UPI) open outside
      * it. Either way, ask [status] where the payment stands. Like the sheet, it survives rotation itself, and cancelling
-     * the call closes it, as on iOS.
+     * the call closes it.
      */
     public suspend fun presentPaymentApp(
         activity: Activity,

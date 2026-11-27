@@ -107,7 +107,7 @@ internal class SheetRequest(
 internal const val REQUEST = "com.synqt.sdk.REQUEST"
 
 /**
- * Lets a cancelled caller close the SDK activity showing its request, as on iOS, even if that activity has not
+ * Lets a cancelled caller close the SDK activity showing its request, even if that activity has not
  * started yet. Main thread only, so the two can't race.
  */
 internal class Closer {

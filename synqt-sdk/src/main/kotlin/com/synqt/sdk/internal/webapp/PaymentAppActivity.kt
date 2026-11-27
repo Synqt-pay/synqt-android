@@ -29,7 +29,7 @@ internal class PaymentAppRequest(val url: String, val returnUrl: String, val onP
 }
 
 /**
- * The Payment Web App in a WebView under a bar with only a close button, as on iOS; the page carries the Synqt logo. Like the sheet, it handles rotation
+ * The Payment Web App in a WebView under a bar with only a close button; the page carries the Synqt logo. Like the sheet, it handles rotation
  * itself (see the manifest), so the page and anything typed into it stay.
  */
 internal class PaymentAppActivity : Activity() {
@@ -104,7 +104,7 @@ internal class PaymentAppActivity : Activity() {
 
     /** Bank and UPI links leave the WebView. The page controls an intent: link, so only what a browser would allow. */
     private fun openOutside(url: String) {
-        // A malformed intent: link (parseUri throws) or no app for it: the payer stays on the page, as on iOS.
+        // A malformed intent: link (parseUri throws) or no app for it: the payer stays on the page.
         runCatching {
             val target = if (url.startsWith("intent:")) {
                 Intent.parseUri(url, Intent.URI_INTENT_SCHEME).apply {

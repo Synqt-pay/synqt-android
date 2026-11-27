@@ -8,7 +8,7 @@ version = "0.1.0" // the card add-on publishes the same version and depends on t
 
 android {
     namespace = "com.synqt.sdk"
-    compileSdk = 37 // the only platform installed in ~/Library/Android/sdk
+    compileSdk = 37
     defaultConfig { minSdk = 24 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -43,7 +43,7 @@ mavenPublishing {
         ),
     )
     publishToMavenCentral()
-    // Without a key (publishToMavenLocal on a developer Mac) publish unsigned; Central refuses unsigned uploads.
+    // Without a key (publishToMavenLocal) publish unsigned; Central refuses unsigned uploads.
     if (providers.gradleProperty("signingInMemoryKey").isPresent) signAllPublications()
     coordinates("com.synqt", "synqt-android", version.toString())
     pom {

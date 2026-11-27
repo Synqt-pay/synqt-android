@@ -30,7 +30,7 @@ public class Synqt(private val environment: Environment) {
     public enum class Environment(public val apiBaseUrl: String, public val paymentAppBaseUrl: String) {
         SANDBOX("https://api.sandbox.synqt.io", "https://payment.sandbox.synqt.io/"),
 
-        /** SYNQT internal development platform, as in the WordPress plugin. Not for merchants. */
+        /** SYNQT internal development platform. Not for merchants. */
         STABLE("https://api.stable.aopay.io", "https://payment.stable.aopay.io/"),
         LIVE("https://api.synqt.io", "https://payment.synqt.io/"),
     }
