@@ -151,7 +151,7 @@ internal class PaymentMethodSheet(
     private val nothingToEnter = inputs.isEmpty() && addonSection == null
     private val intro = SynqtUI.text(activity, activity.getString(R.string.synqt_sheet_intro_nothing_to_enter), 16f, R.color.synqt_text_muted)
     private val headings = mutableListOf<Pair<Int, View>>() // section heading views, by section
-    private val questions = mutableListOf<View>() // each tile question's view, in order
+    private val questions = mutableListOf<View>()
     private val scroll = ScrollView(activity)
     private val processing = activity.processingView()
     // The sheet itself, at the bottom of a transparent full-screen window: a wrap-content window keeps its old
@@ -161,7 +161,7 @@ internal class PaymentMethodSheet(
     // The payin result once SYNQT accepted it, returned however the payer closes the sheet afterwards.
     private var accepted: CreatePayinResult? = restore?.accepted
     private var openedApp = restore?.openedApp ?: false
-    // On a large screen the sheet is a card in the middle, as on iPad, not a sheet along the bottom.
+    // On a large screen the sheet is a card in the middle, not a sheet along the bottom.
     private var centered = false
     private var detaching = false // replaced by a rebuilt sheet, so closing this one is not the payer closing it
 
@@ -228,7 +228,7 @@ internal class PaymentMethodSheet(
             insets
         }
 
-        // Tall forms scroll between context fixed header and context fixed Pay button; short ones keep the sheet short.
+        // Tall forms scroll between a fixed header and a fixed Pay button; short ones keep the sheet short.
         val body = CappedColumn(context).apply {
             orientation = LinearLayout.VERTICAL
             addView(context.sheetHeader { dialog.cancel() })
@@ -261,10 +261,10 @@ internal class PaymentMethodSheet(
         fitWindow()
         dialog.setOnShowListener { onPresented() }
         dialog.setOnDismissListener {
-            // What the payer typed doesn't outlive the sheet (context rebuilt one has already taken it over in SheetState).
+            // What the payer typed doesn't outlive the sheet (a rebuilt one has already taken it over in SheetState).
             addonSection?.clear()
             if (detaching) return@setOnDismissListener
-            result.complete(accepted) // null if the payer closed it before paying; no-op once context result has completed it
+            result.complete(accepted) // null if the payer closed it before paying; no-op once a result has completed it
             scope.cancel()
             host.finish()
         }
@@ -299,7 +299,7 @@ internal class PaymentMethodSheet(
     }
 
     /**
-     * A centred card with all corners round on a tablet (600dp and wider either way, as iPad's form sheet), else a sheet
+     * A centred card with all corners round on a tablet (600dp and wider either way), else a sheet
      * along the bottom. At most 640dp wide, Material's bottom sheet maximum, so it doesn't stretch across a wide
      * screen; phones stay full width. Rerun on rotation.
      */
@@ -520,12 +520,12 @@ internal class PaymentMethodSheet(
         scroll.addView(LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(context.dp(16), context.dp(16), context.dp(16), context.dp(8))
-            // A transfer reference that contains the order ID would read as context second, near-identical "Reference", so the order ID goes.
+            // A transfer reference that contains the order ID would read as a second, near-identical "Reference", so the order ID goes.
             val orderIdInReference = transfer != null && next.reference?.contains(summary.reference) == true
             addView(context.summaryCard(summary.copy(amount = amount), showReference = !orderIdInReference))
             val timer = next.expiresAt?.let { countdown(it) }
             val reference = next.reference.takeIf { transfer != null }
-            // The countdown (with context transfer's reference) sits in one card above the instructions, the same for every method.
+            // The countdown (with a transfer's reference) sits in one card above the instructions, the same for every method.
             if (reference != null || timer != null) addView(context.referenceCard(reference, timer).apply { (layoutParams as LinearLayout.LayoutParams).topMargin = context.dp(16) })
             val title = if (transfer != null) context.getString(R.string.synqt_next_transfer_title) else context.getString(R.string.synqt_next_title, methodName)
             addView(SynqtUI.text(context, title, 20f, weight = SynqtUI.Weight.SEMIBOLD).apply { setPadding(0, context.dp(24), 0, context.dp(8)) })
@@ -728,7 +728,7 @@ private class CappedColumn(context: Context) : LinearLayout(context) {
 }
 
 /**
- * The Pay bar stays on screen, so its text stops growing at this font scale (about iOS's accessibility1) and the
+ * The Pay bar stays on screen, so its text stops growing at this font scale and the
  * scrolling form between it and the header keeps the room. The header has no text, so it doesn't grow at all.
  */
 private const val BAR_MAX_SCALE = 1.6f
@@ -838,7 +838,7 @@ private fun Context.transferCard(account: PaymentMethodResponse.Account, amount:
 /** The value, unless it is blank or the "-" SYNQT sends for a detail it does not have. */
 private fun String?.shown() = this?.takeIf { it.isNotBlank() && it != "-" }
 
-/** What the payer must know before transferring. Draft wording, based on the Payment Web App's notice. */
+/** What the payer must know before transferring. */
 private fun Context.transferNotice() = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
     setPadding(0, dp(16), 0, dp(8))
@@ -1011,7 +1011,7 @@ internal class SheetState(
 internal data class PaymentSummary(val amount: String, val merchant: String?, val method: String, val reference: String)
 
 /**
- * Rand as R1,250.00 (the synqt-output-format convention); other currencies as "USD 1,250.00". Keeps extra
+ * Rand as R1,250.00; other currencies as "USD 1,250.00". Keeps extra
  * decimals the amount really has, so nothing is rounded away.
  */
 internal fun formatMoney(amount: BigDecimal, currencyCode: String): String {

@@ -30,7 +30,7 @@ import android.widget.TextView
 import com.synqt.sdk.R
 
 // Helpers shared by SynqtUI and the payment sheet. Colours come from res/values/synqt_colors.xml (dark values in
-// values-night), following the synqt-brand-design skill and its mobile type scale.
+// values-night).
 
 internal fun Context.dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
